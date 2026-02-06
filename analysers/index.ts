@@ -10,12 +10,14 @@ import { analyseSocial } from './social'
 import { analyseTechStack } from './tech-stack'
 import { analyseContent } from './content'
 
+export { analyseVisual } from './visual'
+
 interface AnalyserDef {
   readonly name: string
   readonly fn: (data: CollectedData) => Promise<AnalysisResult>
 }
 
-const ANALYSERS: readonly AnalyserDef[] = [
+const ALL_ANALYSERS: readonly AnalyserDef[] = [
   { name: 'Visual & Design', fn: analyseVisual },
   { name: 'Performance & Speed', fn: analysePerformance },
   { name: 'SEO & Keywords', fn: analyseSeo },
@@ -26,7 +28,12 @@ const ANALYSERS: readonly AnalyserDef[] = [
   { name: 'Content & Conversion', fn: analyseContent },
 ]
 
-function makeErrorResult(name: string, error: Error): AnalysisResult {
+/** The 7 analysers that need full CollectedData (everything except visual) */
+const REMAINING_ANALYSERS: readonly AnalyserDef[] = ALL_ANALYSERS.filter(
+  (a) => a.name !== 'Visual & Design',
+)
+
+export function makeErrorResult(name: string, error: Error): AnalysisResult {
   return {
     sectionTitle: name,
     eli5Summary: `Analysis unavailable — ${error.message}`,
@@ -37,13 +44,15 @@ function makeErrorResult(name: string, error: Error): AnalysisResult {
   }
 }
 
-export async function runAllAnalysers(
+async function runAnalyserBatch(
+  analysers: readonly AnalyserDef[],
   data: CollectedData,
+  label: string,
 ): Promise<readonly AnalysisResult[]> {
   const waveStart = Date.now()
 
   const results = await Promise.allSettled(
-    ANALYSERS.map(async (a) => {
+    analysers.map(async (a) => {
       const t0 = Date.now()
       try {
         const result = await withTimeout(a.fn(data), AI_TIMEOUT_MS, a.name)
@@ -56,16 +65,29 @@ export async function runAllAnalysers(
     }),
   )
 
-  console.log(`[pipeline] Wave 2 (analysers) done in ${Date.now() - waveStart}ms`)
+  console.log(`[pipeline] ${label} done in ${Date.now() - waveStart}ms`)
 
   return results.map((result, index) => {
     if (result.status === 'fulfilled') {
       return result.value
     }
-    // TODO: log to debug trace when debug module is wired in (Phase 4)
     return makeErrorResult(
-      ANALYSERS[index].name,
+      analysers[index].name,
       result.reason as Error,
     )
   })
+}
+
+/** Run all 8 analysers in parallel (original behaviour) */
+export async function runAllAnalysers(
+  data: CollectedData,
+): Promise<readonly AnalysisResult[]> {
+  return runAnalyserBatch(ALL_ANALYSERS, data, 'Wave 2 (all analysers)')
+}
+
+/** Run the 7 non-visual analysers in parallel */
+export async function runRemainingAnalysers(
+  data: CollectedData,
+): Promise<readonly AnalysisResult[]> {
+  return runAnalyserBatch(REMAINING_ANALYSERS, data, 'Wave 2b (remaining analysers)')
 }

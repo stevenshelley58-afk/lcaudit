@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { collectAll } from '@/collectors'
-import { runAllAnalysers } from '@/analysers'
+import { startCollectors } from '@/collectors'
+import { analyseVisual, runRemainingAnalysers, makeErrorResult } from '@/analysers'
 import { buildReport } from '@/lib/report-builder'
 import { getEnv } from '@/lib/env'
 import { validateAuditUrl } from '@/lib/url-safety'
 import { checkRateLimit, generateAuditId, extractHostname } from '@/lib/utils'
 import { ApiError, AuditError, AnalyserError, CollectorError, TimeoutError } from '@/lib/errors'
 import { AuditRequestSchema } from '@/lib/types'
-import type { ApiResponse } from '@/lib/types'
+import type { ApiResponse, CollectedData, AnalysisResult } from '@/lib/types'
 
 // Allow up to 300s on Pro plan (capped at 60s on Hobby)
 export const maxDuration = 300
@@ -53,11 +53,47 @@ export async function POST(request: Request): Promise<Response> {
     const startTime = Date.now()
     console.log(`[pipeline] Starting audit for ${hostname} (${url})`)
 
-    // Wave 1: Collect data (10 parallel collectors)
-    const collectedData = await collectAll(url, auditId)
+    // Wave 1: Fire all 10 collectors in parallel
+    const collectors = startCollectors(url, auditId)
 
-    // Wave 2: Run AI analysers (8 parallel analysers)
-    const analyses = await runAllAnalysers(collectedData)
+    // Early start: as soon as screenshots + html resolve, fire visual analyser
+    const [screenshots, html] = await Promise.all([
+      collectors.screenshots,
+      collectors.html,
+    ])
+    console.log(`[pipeline] Screenshots + HTML ready in ${Date.now() - startTime}ms — starting visual analyser early`)
+
+    // Build partial CollectedData for the visual analyser (null out fields it doesn't use)
+    const partialData: CollectedData = {
+      screenshots,
+      lighthouse: { mobile: { performance: 0, accessibility: 0, bestPractices: 0, seo: 0, lcp: 0, cls: 0, tbt: 0, fcp: 0, si: 0, tti: 0 }, desktop: { performance: 0, accessibility: 0, bestPractices: 0, seo: 0, lcp: 0, cls: 0, tbt: 0, fcp: 0, si: 0, tti: 0 }, diagnostics: [] },
+      html,
+      robots: null,
+      sitemap: null,
+      sslDns: null,
+      securityHeaders: null,
+      serp: null,
+      linkCheck: null,
+      techStack: null,
+    }
+
+    // Fire visual analyser immediately (runs concurrently with remaining collectors)
+    const visualPromise: Promise<AnalysisResult> = analyseVisual(partialData).catch((err) => {
+      console.log(`[analyser] Visual & Design FAILED: ${(err as Error).message}`)
+      return makeErrorResult('Visual & Design', err as Error)
+    })
+
+    // Wait for all 10 collectors to finish
+    const collectedData = await collectors.waitForAll()
+
+    // Wave 2: Run remaining 7 analysers with full data
+    const [visualResult, remainingResults] = await Promise.all([
+      visualPromise,
+      runRemainingAnalysers(collectedData),
+    ])
+
+    // Combine: visual first (matches original ANALYSERS order), then remaining 7
+    const analyses: readonly AnalysisResult[] = [visualResult, ...remainingResults]
 
     // Wave 3: Build final report (synthesis + persistence)
     const t3 = Date.now()

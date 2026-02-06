@@ -59,70 +59,109 @@ const OPTIONAL_COLLECTORS: readonly [
   { name: 'techStack', tier: 'optional', fn: collectTechStack },
 ]
 
-export async function collectAll(
-  url: string,
-  auditId: string,
-): Promise<CollectedData> {
+export interface StartedCollectors {
+  /** Resolves when screenshots collector completes */
+  readonly screenshots: Promise<ScreenshotData>
+  /** Resolves when html-extract collector completes */
+  readonly html: Promise<HtmlData>
+  /** Resolves to the full CollectedData once all 10 collectors finish */
+  readonly waitForAll: () => Promise<CollectedData>
+}
+
+/**
+ * Kick off all 10 collectors in parallel, but expose individual promises
+ * for screenshots and html so callers can start the visual analyser early.
+ */
+export function startCollectors(url: string, auditId: string): StartedCollectors {
+  const waveStart = Date.now()
+
   const allCollectors: readonly CollectorDef<unknown>[] = [
     ...REQUIRED_COLLECTORS,
     ...OPTIONAL_COLLECTORS,
   ]
 
-  const waveStart = Date.now()
+  // Fire all 10 collectors immediately — each gets its own promise
+  const promises = allCollectors.map(async (c) => {
+    const t0 = Date.now()
+    try {
+      const result = await withTimeout(c.fn(url, auditId), COLLECTOR_TIMEOUT_MS, c.name)
+      console.log(`[collector] ${c.name} OK in ${Date.now() - t0}ms`)
+      return result
+    } catch (err) {
+      console.log(`[collector] ${c.name} FAILED in ${Date.now() - t0}ms: ${(err as Error).message}`)
+      throw err
+    }
+  })
 
-  const results = await Promise.allSettled(
-    allCollectors.map(async (c) => {
-      const t0 = Date.now()
-      try {
-        const result = await withTimeout(c.fn(url, auditId), COLLECTOR_TIMEOUT_MS, c.name)
-        console.log(`[collector] ${c.name} OK in ${Date.now() - t0}ms`)
-        return result
-      } catch (err) {
-        console.log(`[collector] ${c.name} FAILED in ${Date.now() - t0}ms: ${(err as Error).message}`)
-        throw err
-      }
-    }),
+  // Prevent unhandled rejection warnings — waitForAll() uses Promise.allSettled
+  // to observe the real rejection status, but individual promises in the array
+  // need a no-op handler in case waitForAll() is never called (e.g. early abort)
+  promises.forEach((p) => p.catch(() => {}))
+
+  // Build a name → promise lookup so we don't depend on array order
+  const promiseByName = new Map(
+    allCollectors.map((c, i) => [c.name, promises[i]]),
   )
 
-  console.log(`[pipeline] Wave 1 (collectors) done in ${Date.now() - waveStart}ms`)
+  const screenshotsPromise = promiseByName.get('screenshots')!.then((v) => v as ScreenshotData)
+  const htmlPromise = promiseByName.get('html')!.then((v) => v as HtmlData)
 
-  // Check required collectors (indices 0, 1, 2)
-  const failedRequired = REQUIRED_COLLECTORS.reduce<readonly string[]>(
-    (acc, collector, i) => {
-      const result = results[i]
-      if (result.status === 'rejected') {
-        return [...acc, `${collector.name}: ${(result.reason as Error).message}`]
-      }
-      return acc
-    },
-    [],
-  )
+  const waitForAll = async (): Promise<CollectedData> => {
+    const results = await Promise.allSettled(promises)
 
-  if (failedRequired.length > 0) {
-    throw new AuditError(
-      `Required collectors failed: ${failedRequired.join('; ')}`,
-      failedRequired.map((f) => f.split(':')[0]),
+    console.log(`[pipeline] Wave 1 (collectors) done in ${Date.now() - waveStart}ms`)
+
+    // Check required collectors (indices 0, 1, 2)
+    const failedRequired = REQUIRED_COLLECTORS.reduce<readonly string[]>(
+      (acc, collector, i) => {
+        const result = results[i]
+        if (result.status === 'rejected') {
+          return [...acc, `${collector.name}: ${(result.reason as Error).message}`]
+        }
+        return acc
+      },
+      [],
     )
-  }
 
-  // At this point, all required collectors succeeded
-  const reqOffset = REQUIRED_COLLECTORS.length
+    if (failedRequired.length > 0) {
+      throw new AuditError(
+        `Required collectors failed: ${failedRequired.join('; ')}`,
+        failedRequired.map((f) => f.split(':')[0]),
+      )
+    }
 
-  function getOptionalValue<T>(index: number): T | null {
-    const result = results[reqOffset + index]
-    return result.status === 'fulfilled' ? (result.value as T) : null
+    const reqOffset = REQUIRED_COLLECTORS.length
+
+    function getOptionalValue<T>(index: number): T | null {
+      const result = results[reqOffset + index]
+      return result.status === 'fulfilled' ? (result.value as T) : null
+    }
+
+    return {
+      screenshots: (results[0] as PromiseFulfilledResult<ScreenshotData>).value,
+      lighthouse: (results[1] as PromiseFulfilledResult<LighthouseData>).value,
+      html: (results[2] as PromiseFulfilledResult<HtmlData>).value,
+      robots: getOptionalValue<RobotsData>(0),
+      sitemap: getOptionalValue<SitemapData>(1),
+      sslDns: getOptionalValue<SslDnsData>(2),
+      securityHeaders: getOptionalValue<SecurityHeadersData>(3),
+      serp: getOptionalValue<SerpData>(4),
+      linkCheck: getOptionalValue<LinkCheckData>(5),
+      techStack: getOptionalValue<TechStackData>(6),
+    }
   }
 
   return {
-    screenshots: (results[0] as PromiseFulfilledResult<ScreenshotData>).value,
-    lighthouse: (results[1] as PromiseFulfilledResult<LighthouseData>).value,
-    html: (results[2] as PromiseFulfilledResult<HtmlData>).value,
-    robots: getOptionalValue<RobotsData>(0),
-    sitemap: getOptionalValue<SitemapData>(1),
-    sslDns: getOptionalValue<SslDnsData>(2),
-    securityHeaders: getOptionalValue<SecurityHeadersData>(3),
-    serp: getOptionalValue<SerpData>(4),
-    linkCheck: getOptionalValue<LinkCheckData>(5),
-    techStack: getOptionalValue<TechStackData>(6),
+    screenshots: screenshotsPromise,
+    html: htmlPromise,
+    waitForAll,
   }
+}
+
+/** Backwards-compatible wrapper — collects all data and returns when complete */
+export async function collectAll(
+  url: string,
+  auditId: string,
+): Promise<CollectedData> {
+  return startCollectors(url, auditId).waitForAll()
 }
