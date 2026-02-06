@@ -71,8 +71,8 @@ async function callClaudeFallback(
   })
 
   const text = response.content
-    .filter((block): block is { type: 'text'; text: string } => block.type === 'text')
-    .map((block) => block.text)
+    .filter((block) => block.type === 'text')
+    .map((block) => ('text' in block ? block.text : ''))
     .join('')
 
   // Extract JSON from response (Claude may wrap in markdown code blocks)
