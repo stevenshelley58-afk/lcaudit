@@ -61,7 +61,8 @@ export async function POST(request: Request): Promise<Response> {
       collectors.screenshots,
       collectors.html,
     ])
-    console.log(`[pipeline] Screenshots + HTML ready in ${Date.now() - startTime}ms — starting visual analyser early`)
+    const earlyDepsMs = Date.now() - startTime
+    console.log(`[pipeline] Screenshots + HTML ready in ${earlyDepsMs}ms — starting visual analyser early`)
 
     // Build partial CollectedData for the visual analyser (null out fields it doesn't use)
     const partialData: CollectedData = {
@@ -78,6 +79,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // Fire visual analyser immediately (runs concurrently with remaining collectors)
+    const visualStart = Date.now()
     const visualPromise: Promise<AnalysisResult> = analyseVisual(partialData).catch((err) => {
       console.log(`[analyser] Visual & Design FAILED: ${(err as Error).message}`)
       return makeErrorResult('Visual & Design', err as Error)
@@ -85,15 +87,19 @@ export async function POST(request: Request): Promise<Response> {
 
     // Wait for all 10 collectors to finish
     const collectedData = await collectors.waitForAll()
+    const collectorsMs = Date.now() - startTime
 
     // Wave 2: Run remaining 7 analysers with full data
-    const [visualResult, remainingResults] = await Promise.all([
+    const wave2Start = Date.now()
+    const [visualResult, remainingBatch] = await Promise.all([
       visualPromise,
       runRemainingAnalysers(collectedData),
     ])
+    const wave2Ms = Date.now() - wave2Start
+    const visualMs = Date.now() - visualStart
 
     // Combine: visual first (matches original ANALYSERS order), then remaining 7
-    const analyses: readonly AnalysisResult[] = [visualResult, ...remainingResults]
+    const analyses: readonly AnalysisResult[] = [visualResult, ...remainingBatch.results]
 
     // Wave 3: Build final report (synthesis + persistence)
     const t3 = Date.now()
@@ -106,13 +112,28 @@ export async function POST(request: Request): Promise<Response> {
       analyses,
       durationMs,
     })
-    console.log(`[pipeline] Wave 3 (synthesis + report) done in ${Date.now() - t3}ms`)
-    console.log(`[pipeline] Total audit: ${Date.now() - startTime}ms`)
+    const wave3Ms = Date.now() - t3
+    const totalMs = Date.now() - startTime
+    console.log(`[pipeline] Wave 3 (synthesis + report) done in ${wave3Ms}ms`)
+    console.log(`[pipeline] Total audit: ${totalMs}ms`)
 
     return NextResponse.json({
       success: true,
       data: report,
-    } satisfies ApiResponse<typeof report>)
+      _timing: {
+        earlyDepsMs,
+        collectorsMs,
+        visualAnalyserMs: visualMs,
+        wave2RemainingMs: wave2Ms,
+        wave3SynthesisMs: wave3Ms,
+        totalMs,
+        collectors: collectors.timings,
+        analysers: [
+          { name: 'Visual & Design', durationMs: visualMs, status: 'ok' as const },
+          ...remainingBatch.timings,
+        ],
+      },
+    })
   } catch (error) {
     return handleError(error)
   }

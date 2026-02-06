@@ -59,6 +59,12 @@ const OPTIONAL_COLLECTORS: readonly [
   { name: 'techStack', tier: 'optional', fn: collectTechStack },
 ]
 
+export interface CollectorTiming {
+  readonly name: string
+  readonly durationMs: number
+  readonly status: 'ok' | 'failed'
+}
+
 export interface StartedCollectors {
   /** Resolves when screenshots collector completes */
   readonly screenshots: Promise<ScreenshotData>
@@ -66,6 +72,8 @@ export interface StartedCollectors {
   readonly html: Promise<HtmlData>
   /** Resolves to the full CollectedData once all 10 collectors finish */
   readonly waitForAll: () => Promise<CollectedData>
+  /** Per-collector timing (populated after waitForAll resolves) */
+  readonly timings: CollectorTiming[]
 }
 
 /**
@@ -74,6 +82,7 @@ export interface StartedCollectors {
  */
 export function startCollectors(url: string, auditId: string): StartedCollectors {
   const waveStart = Date.now()
+  const timings: CollectorTiming[] = []
 
   const allCollectors: readonly CollectorDef<unknown>[] = [
     ...REQUIRED_COLLECTORS,
@@ -85,10 +94,14 @@ export function startCollectors(url: string, auditId: string): StartedCollectors
     const t0 = Date.now()
     try {
       const result = await withTimeout(c.fn(url, auditId), COLLECTOR_TIMEOUT_MS, c.name)
-      console.log(`[collector] ${c.name} OK in ${Date.now() - t0}ms`)
+      const ms = Date.now() - t0
+      timings.push({ name: c.name, durationMs: ms, status: 'ok' })
+      console.log(`[collector] ${c.name} OK in ${ms}ms`)
       return result
     } catch (err) {
-      console.log(`[collector] ${c.name} FAILED in ${Date.now() - t0}ms: ${(err as Error).message}`)
+      const ms = Date.now() - t0
+      timings.push({ name: c.name, durationMs: ms, status: 'failed' })
+      console.log(`[collector] ${c.name} FAILED in ${ms}ms: ${(err as Error).message}`)
       throw err
     }
   })
@@ -155,6 +168,7 @@ export function startCollectors(url: string, auditId: string): StartedCollectors
     screenshots: screenshotsPromise,
     html: htmlPromise,
     waitForAll,
+    timings,
   }
 }
 

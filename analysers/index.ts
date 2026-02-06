@@ -33,6 +33,17 @@ const REMAINING_ANALYSERS: readonly AnalyserDef[] = ALL_ANALYSERS.filter(
   (a) => a.name !== 'Visual & Design',
 )
 
+export interface AnalyserTiming {
+  readonly name: string
+  readonly durationMs: number
+  readonly status: 'ok' | 'failed'
+}
+
+export interface AnalyserBatchResult {
+  readonly results: readonly AnalysisResult[]
+  readonly timings: readonly AnalyserTiming[]
+}
+
 export function makeErrorResult(name: string, error: Error): AnalysisResult {
   return {
     sectionTitle: name,
@@ -48,18 +59,23 @@ async function runAnalyserBatch(
   analysers: readonly AnalyserDef[],
   data: CollectedData,
   label: string,
-): Promise<readonly AnalysisResult[]> {
+): Promise<AnalyserBatchResult> {
   const waveStart = Date.now()
+  const timings: AnalyserTiming[] = []
 
   const results = await Promise.allSettled(
     analysers.map(async (a) => {
       const t0 = Date.now()
       try {
         const result = await withTimeout(a.fn(data), AI_TIMEOUT_MS, a.name)
-        console.log(`[analyser] ${a.name} OK in ${Date.now() - t0}ms`)
+        const ms = Date.now() - t0
+        timings.push({ name: a.name, durationMs: ms, status: 'ok' })
+        console.log(`[analyser] ${a.name} OK in ${ms}ms`)
         return result
       } catch (err) {
-        console.log(`[analyser] ${a.name} FAILED in ${Date.now() - t0}ms: ${(err as Error).message}`)
+        const ms = Date.now() - t0
+        timings.push({ name: a.name, durationMs: ms, status: 'failed' })
+        console.log(`[analyser] ${a.name} FAILED in ${ms}ms: ${(err as Error).message}`)
         throw err
       }
     }),
@@ -67,7 +83,7 @@ async function runAnalyserBatch(
 
   console.log(`[pipeline] ${label} done in ${Date.now() - waveStart}ms`)
 
-  return results.map((result, index) => {
+  const analysisResults = results.map((result, index) => {
     if (result.status === 'fulfilled') {
       return result.value
     }
@@ -76,18 +92,20 @@ async function runAnalyserBatch(
       result.reason as Error,
     )
   })
+
+  return { results: analysisResults, timings }
 }
 
 /** Run all 8 analysers in parallel (original behaviour) */
 export async function runAllAnalysers(
   data: CollectedData,
-): Promise<readonly AnalysisResult[]> {
+): Promise<AnalyserBatchResult> {
   return runAnalyserBatch(ALL_ANALYSERS, data, 'Wave 2 (all analysers)')
 }
 
 /** Run the 7 non-visual analysers in parallel */
 export async function runRemainingAnalysers(
   data: CollectedData,
-): Promise<readonly AnalysisResult[]> {
+): Promise<AnalyserBatchResult> {
   return runAnalyserBatch(REMAINING_ANALYSERS, data, 'Wave 2b (remaining analysers)')
 }
