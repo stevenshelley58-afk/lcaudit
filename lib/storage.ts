@@ -31,7 +31,7 @@ export async function storeScreenshot(
 ): Promise<string> {
   const blob = await put(
     `audits/${auditId}/${viewport}.png`,
-    new Uint8Array(imageBuffer),
+    Buffer.from(imageBuffer),
     { access: 'public', contentType: 'image/png' },
   )
   return blob.url
