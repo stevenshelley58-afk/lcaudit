@@ -1,3 +1,8 @@
+---
+name: collectors
+description: Data collector specs for lcaudit — required vs optional tiers, Promise.allSettled patterns, screenshot storage, SERP provider. Use when building or modifying any collector.
+---
+
 # Collectors — lcaudit
 
 All collectors run via `Promise.allSettled` with individual timeouts. Each collector returns typed data or throws with clear error message.

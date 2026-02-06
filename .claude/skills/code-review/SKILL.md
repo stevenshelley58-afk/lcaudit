@@ -1,5 +1,7 @@
 ---
+name: code-review
 description: Review uncommitted changes for security and quality issues.
+disable-model-invocation: true
 ---
 
 Invoke the **code-reviewer** agent.

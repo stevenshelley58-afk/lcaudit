@@ -1,3 +1,8 @@
+---
+name: debug-panel
+description: Independent debug and tracing module specs — trace API, storage, viewer UI. Use when building the debug module, tracing, or the config panel.
+---
+
 # Debug & Tracing Module — lcaudit
 
 ## Design Principle: Fully Independent
@@ -45,8 +50,8 @@ t.aiCall({
   durationMs: 3400,
   cost: 0.0032,
   isFallback: false,
-  prompt: fullPromptText,       // stored for replay
-  response: fullResponseText,   // stored for replay
+  prompt: fullPromptText,
+  response: fullResponseText,
 })
 
 // Log synthesis
@@ -85,10 +90,10 @@ interface AuditTrace {
 
   collectors: CollectorLog[]
   aiCalls: AiCallLog[]
-  warnings: string[]             // e.g. "Audit exceeded 60s SLO"
-  errors: string[]               // e.g. "Required collector failed"
+  warnings: string[]
+  errors: string[]
 
-  totalCost: number              // sum of all aiCall costs
+  totalCost: number
   totalTokens: {
     prompt: number
     completion: number
@@ -101,12 +106,12 @@ interface CollectorLog {
   status: 'ok' | 'fail' | 'timeout'
   durationMs: number
   error: string | null
-  dataSize: number | null        // bytes of returned data
+  dataSize: number | null
   startedAt: string
 }
 
 interface AiCallLog {
-  step: string                   // e.g. 'visual-design', 'synthesis'
+  step: string
   provider: 'google' | 'openai' | 'anthropic'
   model: string
   promptTokens: number
@@ -114,10 +119,8 @@ interface AiCallLog {
   durationMs: number
   cost: number
   isFallback: boolean
-  fallbackReason: string | null  // e.g. 'rate_limit', 'timeout', 'error'
+  fallbackReason: string | null
   startedAt: string
-
-  // Full prompt/response stored in Blob, not KV (too large)
   prompt: string
   response: string
 }

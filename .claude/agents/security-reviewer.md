@@ -3,6 +3,7 @@ name: security-reviewer
 description: Security vulnerability detection for lcaudit. Use after writing code that handles user input, API endpoints, or external API calls.
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: opus
+skills: ["api-providers", "backend-patterns"]
 ---
 
 You are a security specialist reviewing lcaudit code.

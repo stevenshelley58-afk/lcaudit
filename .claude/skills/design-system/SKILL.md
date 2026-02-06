@@ -1,3 +1,8 @@
+---
+name: design-system
+description: Visual design tokens, layout patterns, and component specs for lcaudit UI. Use when building any UI component, page layout, or styling.
+---
+
 # Design System — lcaudit
 
 ## Principles

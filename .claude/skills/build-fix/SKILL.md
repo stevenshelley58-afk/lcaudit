@@ -1,5 +1,7 @@
 ---
+name: build-fix
 description: Fix build errors from Vercel deployment. Minimal diffs only.
+disable-model-invocation: true
 ---
 
 Invoke the **build-error-resolver** agent.

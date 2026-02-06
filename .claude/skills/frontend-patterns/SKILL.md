@@ -1,3 +1,8 @@
+---
+name: frontend-patterns
+description: React component patterns, hooks, performance, and accessibility rules for lcaudit. Use when building UI components or client-side logic.
+---
+
 # Frontend Patterns — lcaudit
 
 ## Component Patterns

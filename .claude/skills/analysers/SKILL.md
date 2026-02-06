@@ -1,3 +1,8 @@
+---
+name: analysers
+description: AI analyser specs for lcaudit — model routing, data flow, output shape, evidence rules. Use when building or modifying any analyser, synthesis, or the analysis pipeline.
+---
+
 # Analysers — lcaudit
 
 8 independent AI calls via `Promise.allSettled`. Each receives ONLY relevant data. Every finding must cite evidence. Models split across providers to avoid rate limits and optimise cost.

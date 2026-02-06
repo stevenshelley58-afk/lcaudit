@@ -1,3 +1,8 @@
+---
+name: backend-patterns
+description: API routes, error handling, retry logic, rate limiting, and tracing patterns for lcaudit. Use when building API endpoints, server-side logic, or integrations.
+---
+
 # Backend Patterns — lcaudit
 
 ## API Design

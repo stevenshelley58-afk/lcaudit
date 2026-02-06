@@ -1,3 +1,8 @@
+---
+name: api-providers
+description: SDK usage rules for Gemini, OpenAI, and Claude APIs. Use when writing any AI call, structured output, or model configuration.
+---
+
 # API Providers — lcaudit
 
 Rules from official docs. Follow exactly.

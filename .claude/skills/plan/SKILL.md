@@ -1,5 +1,7 @@
 ---
+name: plan
 description: Create implementation plan for a feature. WAIT for user CONFIRM before writing code.
+disable-model-invocation: true
 ---
 
 Invoke the **planner** agent to create a comprehensive implementation plan.
