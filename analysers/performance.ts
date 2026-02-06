@@ -1,4 +1,5 @@
 import { zodToJsonSchema } from 'zod-to-json-schema'
+import { ThinkingLevel } from '@google/genai'
 import { getGeminiClient, getOpenAiClient } from '@/lib/ai'
 import { AnalysisResultSchema } from '@/lib/types'
 import type { CollectedData, AnalysisResult } from '@/lib/types'
@@ -38,7 +39,7 @@ async function callGemini(data: CollectedData): Promise<AnalysisResult> {
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
-      thinkingConfig: { thinkingLevel: 'LOW' },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
     },
   })
   return JSON.parse(response.text ?? '{}')

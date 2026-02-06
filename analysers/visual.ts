@@ -1,4 +1,5 @@
 import { zodToJsonSchema } from 'zod-to-json-schema'
+import { ThinkingLevel, MediaResolution } from '@google/genai'
 import { getGeminiAlphaClient, getOpenAiClient, fetchImageAsBase64 } from '@/lib/ai'
 import { AnalysisResultSchema } from '@/lib/types'
 import type { CollectedData, AnalysisResult } from '@/lib/types'
@@ -57,8 +58,8 @@ async function callGeminiAlpha(data: CollectedData): Promise<AnalysisResult> {
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
-      thinkingConfig: { thinkingLevel: 'HIGH' },
-      mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+      mediaResolution: MediaResolution.MEDIA_RESOLUTION_HIGH,
     },
   })
 
