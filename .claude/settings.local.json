@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: scaffold Next.js 16 + TypeScript + Tailwind v4\n\nInit project with App Router, strict TypeScript, Tailwind CSS v4\ndesign tokens, and all dependencies: Gemini, OpenAI, Claude SDKs,\nZod, Recharts, Lucide, Vercel Blob, Upstash Redis, Cheerio.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: define all TypeScript types and Zod schemas\n\nComplete type system: collector outputs \\(10 types\\), analysis\nresults, findings with evidence types, audit report, API response.\nPlus error classes, constants, and LLM pricing utilities.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
