@@ -61,7 +61,7 @@ export function IdleView({ onSubmit }: IdleViewProps) {
         <span className="text-gray-400">Instantly.</span>
       </h2>
       <p className="text-xl text-gray-500 mb-12 leading-relaxed max-w-2xl mx-auto">
-        SEO, technical, and design analysis in one scan. Enter a URL to get started.
+        SEO, technical, and design analysis in one scan.
       </p>
 
       <form onSubmit={handleSubmit} className="max-w-xl mx-auto">
