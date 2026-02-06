@@ -34,6 +34,18 @@ export class CollectorError extends Error {
   }
 }
 
+export class AnalyserError extends Error {
+  public readonly analyser: string
+  public readonly model: string | null
+
+  constructor(analyser: string, message: string, model?: string) {
+    super(message)
+    this.name = 'AnalyserError'
+    this.analyser = analyser
+    this.model = model ?? null
+  }
+}
+
 export class TimeoutError extends Error {
   public readonly label: string
   public readonly timeoutMs: number

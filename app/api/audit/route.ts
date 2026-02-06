@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { collectAll } from '@/collectors'
+import { runAllAnalysers } from '@/analysers'
+import { synthesize } from '@/synthesis/synthesize'
 import { getEnv } from '@/lib/env'
 import { validateAuditUrl } from '@/lib/url-safety'
 import { checkRateLimit, generateAuditId, extractHostname } from '@/lib/utils'
@@ -42,22 +44,32 @@ export async function POST(request: Request): Promise<Response> {
     // SSRF prevention
     validateAuditUrl(url)
 
-    // Run audit (Phase 1: collectors only)
+    // Run audit pipeline
     const auditId = generateAuditId()
+    const hostname = extractHostname(url)
     const startTime = Date.now()
+
+    // Wave 1: Collect data (10 parallel collectors)
     const collectedData = await collectAll(url, auditId)
+
+    // Wave 2: Run AI analysers (8 parallel analysers)
+    const analyses = await runAllAnalysers(collectedData)
+
+    // Wave 3: Synthesize final report
     const durationMs = Date.now() - startTime
+    const report = await synthesize(
+      url,
+      hostname,
+      collectedData,
+      analyses,
+      auditId,
+      durationMs,
+    )
 
     return NextResponse.json({
       success: true,
-      data: {
-        auditId,
-        url,
-        hostname: extractHostname(url),
-        durationMs,
-        collectedData,
-      },
-    })
+      data: report,
+    } satisfies ApiResponse<typeof report>)
   } catch (error) {
     return handleError(error)
   }
