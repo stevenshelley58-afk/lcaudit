@@ -38,6 +38,10 @@ async function captureScreenshot(
     full_page_max_height: String(SCREENSHOT_CONFIG.fullPageMaxHeight),
     delay: '3',
     cache: 'false',
+    block_cookie_banners: 'true',
+    block_banners_by_heuristics: 'true',
+    block_chats: 'true',
+    block_ads: 'true',
   })
 
   return fetchWithRetry(

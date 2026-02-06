@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
-import { AlertTriangle, Cpu, Package } from 'lucide-react'
+import { AlertTriangle, ChevronDown, Cpu, Package, Wrench } from 'lucide-react'
 import { ScoreGauge } from '@/components/ScoreGauge'
 import { SectionCard } from '@/components/SectionCard'
 import type { AuditReport as AuditReportType, TopFix, DetectedApp, RecommendedApp } from '@/lib/types'
@@ -27,6 +28,49 @@ function TopFixCard({
         <p className="text-xs text-medium mt-0.5">{fix.section}</p>
         <p className="text-sm text-dark mt-1">{fix.description}</p>
       </div>
+    </div>
+  )
+}
+
+function TopFixesCard({ fixes }: { readonly fixes: readonly TopFix[] }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full text-left p-5 flex items-start gap-4 hover:bg-light/50 transition-colors"
+      >
+        <Wrench size={20} className="text-medium mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-1 flex-wrap">
+            <h3 className="text-base font-semibold text-black">
+              Top fixes to prioritise
+            </h3>
+            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-danger">
+              {fixes.length} fix{fixes.length !== 1 ? 'es' : ''}
+            </span>
+          </div>
+          <p className="text-sm text-medium leading-relaxed">
+            The highest-impact issues to address first, ranked by priority.
+          </p>
+        </div>
+        <div className="flex items-center shrink-0 mt-1">
+          <ChevronDown
+            size={16}
+            className={`text-medium transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          />
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-gray-100 px-5 py-4 space-y-4">
+          {fixes.map((fix, i) => (
+            <TopFixCard key={`${fix.title}-${i}`} fix={fix} index={i} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -95,47 +139,9 @@ export function AuditReport({ report }: AuditReportProps) {
         </div>
       </div>
 
-      {/* Lighthouse Scores */}
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6">
-        <h2 className="text-base font-bold text-black mb-4">
-          Lighthouse Scores
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <ScoreGauge
-            score={report.lighthouse.mobile.performance}
-            size={64}
-            label="Performance"
-          />
-          <ScoreGauge
-            score={report.lighthouse.mobile.accessibility}
-            size={64}
-            label="Accessibility"
-          />
-          <ScoreGauge
-            score={report.lighthouse.mobile.bestPractices}
-            size={64}
-            label="Best Practices"
-          />
-          <ScoreGauge
-            score={report.lighthouse.mobile.seo}
-            size={64}
-            label="SEO"
-          />
-        </div>
-      </div>
-
       {/* Top Fixes */}
       {report.topFixes.length > 0 && (
-        <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6">
-          <h2 className="text-base font-bold text-black mb-4">
-            Top fixes to prioritise
-          </h2>
-          <div className="space-y-4">
-            {report.topFixes.map((fix, i) => (
-              <TopFixCard key={fix.title} fix={fix} index={i} />
-            ))}
-          </div>
-        </div>
+        <TopFixesCard fixes={report.topFixes} />
       )}
 
       {/* Unavailable Sections Warning */}
