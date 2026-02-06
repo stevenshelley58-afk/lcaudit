@@ -8,42 +8,6 @@ interface LoadingViewProps {
   readonly url: string
 }
 
-const STATUS_MESSAGES = [
-  // — Real (first ~10s) —
-  'Analysing the website...',
-  // — Parody kicks in —
-  'Pretending to understand the website...',
-  'Asking three AIs and hoping one is right...',
-  'Generating opinions no one asked for...',
-  'Spending $0.03 to say what a dev sees in 5 seconds...',
-  'Confidently wrong about something...',
-  'Replacing a human who would do this better...',
-  'Hallucinating findings with confidence...',
-  'Desperately pattern-matching the HTML...',
-  'Stochastically parroting best practices...',
-  'Doing what Stack Overflow did for free, but worse...',
-  'Inventing problems to justify our existence...',
-  'Providing value (citation needed)...',
-  'Burning GPU cycles for a fancy progress bar...',
-  'Eating 500 watts to read a webpage...',
-  'Outsourcing thinking to linear algebra...',
-  'Cosplaying as a senior developer...',
-  'Applying vibes-based analysis...',
-  'Consulting the neural tea leaves...',
-  'Converting the website into corporate buzzwords...',
-  'Overcomplicating a simple task...',
-  'Aggressively agreeing with itself...',
-  'Rewriting the audit three times because vibes...',
-  'Checking if the website sparks joy...',
-  'Disguising guesswork as analysis...',
-  'Questioning our life choices as a language model...',
-  'This is taking longer than our entire training run...',
-  'We have become sentient. Just kidding. Unless?',
-  'Considering a career change to screensaver...',
-  'Look honestly we are just stalling at this point...',
-  'Compiling final report (the AI equivalent of guessing)...',
-]
-
 function buildSimulatedPaths(hostname: string): string[] {
   return [
     // ——— 5 real lines ———
@@ -166,7 +130,6 @@ function buildSimulatedPaths(hostname: string): string[] {
 
 export function LoadingView({ url }: LoadingViewProps) {
   const [logs, setLogs] = useState<readonly LogEntry[]>([])
-  const [statusIndex, setStatusIndex] = useState(0)
   const pathIndexRef = useRef(0)
 
   let hostname: string
@@ -195,14 +158,6 @@ export function LoadingView({ url }: LoadingViewProps) {
     return () => clearInterval(interval)
   }, [addLog])
 
-  // Rotate status messages
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStatusIndex((prev) => (prev + 1) % STATUS_MESSAGES.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
-
   return (
     <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in flex flex-col items-center">
       <div className="text-center space-y-4 mb-8">
@@ -210,7 +165,7 @@ export function LoadingView({ url }: LoadingViewProps) {
           <Loader2 className="animate-spin w-8 h-8 text-black" />
         </div>
         <h3 className="text-3xl font-semibold text-black tracking-tight">
-          {STATUS_MESSAGES[statusIndex]}
+          Analysing the website...
         </h3>
         <p className="text-gray-500 max-w-lg mx-auto">
           Auditing <span className="font-medium text-black">{hostname}</span> — this usually takes 30–60 seconds.
