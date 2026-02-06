@@ -14,8 +14,8 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
     id: 'social-001',
     title: ogTags.title ? 'Open Graph title is set' : 'Missing Open Graph title',
     description: ogTags.title
-      ? 'Your page has a proper title for social sharing.'
-      : "When someone shares your link on Facebook, LinkedIn, or Slack, there won't be a proper title displayed.",
+      ? 'The page has a proper title for social sharing.'
+      : "When someone shares the link on Facebook, LinkedIn, or Slack, there won't be a proper title displayed.",
     evidence: ogTags.title ? `og:title = "${ogTags.title}"` : 'No og:title meta tag found',
     evidenceType: ogTags.title ? 'HTML' : 'MISSING',
     evidenceDetail: ogTags.title ? 'meta[property="og:title"]' : 'head > meta[property="og:title"] expected',
@@ -46,7 +46,7 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
     id: 'social-003',
     title: ogTags.image ? 'Open Graph image is set' : 'Missing Open Graph image',
     description: ogTags.image
-      ? 'Your page has a social sharing image configured.'
+      ? 'The page has a social sharing image configured.'
       : 'Shared links will show a generic placeholder instead of an eye-catching image.',
     evidence: ogTags.image ? `og:image = "${ogTags.image}"` : 'No og:image meta tag found',
     evidenceType: ogTags.image ? 'HTML' : 'MISSING',
@@ -78,7 +78,7 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
     findings.push({
       id: 'social-005',
       title: 'No favicon detected',
-      description: "Your site doesn't have a favicon — the small icon in browser tabs. This looks unprofessional.",
+      description: "The site doesn't have a favicon - the small icon in browser tabs. This looks unprofessional.",
       evidence: 'No favicon link tag or favicon.ico found',
       evidenceType: 'MISSING',
       evidenceDetail: 'head > link[rel="icon"] expected',
@@ -94,10 +94,10 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Social & Sharing',
     eli5Summary: missingCount >= 3
-      ? "When people share your website link on social media, it looks bare — no image, no description."
+      ? "When people share the link on social media, it looks bare - no image, no description."
       : missingCount >= 1
-        ? 'Your social sharing setup is partially complete but missing some key elements.'
-        : 'Your social sharing tags are well-configured.',
+        ? 'The social sharing setup is partially complete but missing some key elements.'
+        : 'The social sharing tags are well-configured.',
     whyItMatters: 'Social sharing is free marketing. A well-configured preview card can dramatically increase click-through rates.',
     overallRating: missingCount >= 3 ? 'Critical' : missingCount >= 1 ? 'Needs Work' : 'Good',
     score: missingCount >= 3 ? 25 : missingCount >= 1 ? 60 : 90,
@@ -132,7 +132,7 @@ RULES:
 - Also check quality: is the og:description compelling? Is the og:title different from the page title? Is og:image a proper social image or just a logo?
 - Rating: Good (all essentials present), Needs Work (1-2 missing), Critical (3+ missing)
 - Score: 0-100 based on completeness and quality
-- Use Australian English`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.`
 }
 
 async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {

@@ -56,7 +56,7 @@ export function IdleView({ onSubmit }: IdleViewProps) {
   return (
     <div className="animate-fade-in-up w-full max-w-3xl mx-auto text-center">
       <h2 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[1.05] mb-8 text-black whitespace-nowrap">
-        Audit your website.
+        Audit any website.
         <br />
         <span className="text-gray-400">Instantly.</span>
       </h2>

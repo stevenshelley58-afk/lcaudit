@@ -96,7 +96,7 @@ function SocialPreviewCard({
   return (
     <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6">
       <h2 className="text-base font-bold text-black mb-1">Social Preview</h2>
-      <p className="text-xs text-medium mb-4">This is how your website appears when shared on Facebook, LinkedIn, or messaging apps. A compelling image and clear title means more people click through to your site.</p>
+      <p className="text-xs text-medium mb-4">This is how the site appears when shared on Facebook, LinkedIn, or messaging apps. A compelling image and clear title means more people click through.</p>
       <div className="rounded-2xl border border-gray-200 overflow-hidden">
         {showImage && (
           <div className="relative w-full aspect-[1.91/1] bg-light">

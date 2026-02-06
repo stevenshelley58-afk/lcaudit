@@ -13,13 +13,13 @@ function getHeaderDescription(header: string): string {
     'content-security-policy':
       'Controls which resources the browser is allowed to load, preventing XSS and injection attacks.',
     'x-frame-options':
-      'Prevents your site from being embedded in iframes, blocking clickjacking attacks.',
+      'Prevents the site from being embedded in iframes, blocking clickjacking attacks.',
     'x-content-type-options':
       'Prevents browsers from MIME-sniffing the content type, reducing drive-by download attacks.',
     'referrer-policy':
       'Controls how much referrer information is sent with requests, protecting user privacy.',
     'permissions-policy':
-      'Controls which browser features (camera, microphone, geolocation) your site can use.',
+      'Controls which browser features (camera, microphone, geolocation) the site can use.',
   }
   return descriptions[header] ?? `The ${header} security header is not configured.`
 }
@@ -47,7 +47,7 @@ function getHeaderFix(header: string): string {
     'permissions-policy':
       'Add the header: Permissions-Policy: camera=(), microphone=(), geolocation=()',
   }
-  return fixes[header] ?? `Configure the ${header} header on your web server.`
+  return fixes[header] ?? `Configure the ${header} header on the web server.`
 }
 
 function buildHeuristicResult(data: CollectedData): AnalysisResult {
@@ -127,9 +127,9 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Security & Trust',
     eli5Summary: criticalCount >= 3
-      ? 'Your website is missing several important security protections.'
-      : 'Your website has basic security in place but could be hardened further.',
-    whyItMatters: 'Security headers protect your visitors from attacks like clickjacking, XSS, and data interception.',
+      ? 'The site is missing several important security protections.'
+      : 'The site has basic security in place but could be hardened further.',
+    whyItMatters: 'Security headers protect visitors from attacks like clickjacking, XSS, and data interception.',
     overallRating: criticalCount >= 3 ? 'Critical' : criticalCount >= 1 ? 'Needs Work' : 'Good',
     score: criticalCount >= 3 ? 25 : criticalCount >= 1 ? 55 : 85,
     findings,
@@ -159,7 +159,7 @@ RULES:
 - Check: HTTPS, cert expiry, redirect chain length, each missing header, CSP quality, HSTS configuration
 - Rating: Good (HTTPS + ≤ 1 missing critical header), Needs Work (HTTPS + 2+ missing), Critical (no HTTPS OR no HSTS+CSP)
 - Score: 0-100 based on security posture
-- Use Australian English`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.`
 }
 
 async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {

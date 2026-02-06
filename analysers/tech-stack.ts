@@ -12,8 +12,8 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   if (!techStack) {
     return {
       sectionTitle: 'Tech Stack & Apps',
-      eli5Summary: "We couldn't detect the technology running your website.",
-      whyItMatters: 'Understanding your tech stack helps identify missing tools and integration opportunities.',
+      eli5Summary: "Could not detect the technology running the site.",
+      whyItMatters: 'Understanding the tech stack helps identify missing tools and integration opportunities.',
       overallRating: 'Error',
       score: 0,
       findings: [{
@@ -44,7 +44,7 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
     findings.push({
       id: 'tech-001',
       title: `Platform detected: ${techStack.platform}`,
-      description: `Your website is built on ${techStack.platform}.`,
+      description: `The site is built on ${techStack.platform}.`,
       evidence: `Platform: ${techStack.platform}`,
       evidenceType: 'METRIC',
       evidenceDetail: 'Platform detection',
@@ -93,7 +93,7 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
     findings.push({
       id: 'tech-004',
       title: 'No analytics tool detected',
-      description: "Without analytics, you can't measure traffic or track conversions.",
+      description: "Without analytics, there is no way to measure traffic or track conversions.",
       evidence: 'No analytics scripts found among detected technologies',
       evidenceType: 'MISSING',
       evidenceDetail: 'Analytics tool expected',
@@ -109,9 +109,9 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Tech Stack & Apps',
     eli5Summary: techStack.platform
-      ? `Your site runs on ${techStack.platform} with ${techStack.detectedApps.length} technologies detected.`
-      : `We detected ${techStack.detectedApps.length} technologies on your site.`,
-    whyItMatters: 'The right tech stack powers growth — analytics, SEO tools, and performance monitoring help you improve.',
+      ? `The site runs on ${techStack.platform} with ${techStack.detectedApps.length} technologies detected.`
+      : `${techStack.detectedApps.length} technologies detected on the site.`,
+    whyItMatters: 'The right tech stack powers growth. Analytics, SEO tools, and performance monitoring drive improvement.',
     overallRating: highImpactCount >= 2 ? 'Critical' : highImpactCount >= 1 ? 'Needs Work' : 'Good',
     score: highImpactCount >= 2 ? 30 : highImpactCount >= 1 ? 60 : 85,
     findings,
@@ -141,7 +141,7 @@ RULES:
 - Recommend missing essentials: analytics, form builder, SEO plugin, caching, CDN, security monitoring
 - Rating: Good (has essentials, lean stack), Needs Work (1-2 missing essentials), Critical (no analytics + other gaps)
 - Score: 0-100 based on stack completeness and health
-- Use Australian English`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.`
 }
 
 async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {

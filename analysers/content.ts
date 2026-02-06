@@ -57,7 +57,7 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
     id: 'content-003',
     title: forms === 0 ? 'No forms or conversion points found' : `${forms} form${forms > 1 ? 's' : ''} detected`,
     description: forms === 0
-      ? 'The page has no forms — visitors have no way to take action.'
+      ? 'The page has no forms. Visitors have no way to take action.'
       : `The page has ${forms} form element${forms > 1 ? 's' : ''}.`,
     evidence: forms === 0 ? 'Zero <form> elements detected' : `${forms} <form> element${forms > 1 ? 's' : ''} found`,
     evidenceType: forms === 0 ? 'MISSING' : 'HTML',
@@ -70,7 +70,7 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   if (links.internal.length < 3) {
     findings.push({
       id: 'content-004', title: 'Very few internal links',
-      description: 'Internal links help visitors explore and help search engines understand your site.',
+      description: 'Internal links help visitors explore and help search engines understand the site.',
       evidence: `Only ${links.internal.length} internal links found`,
       evidenceType: 'METRIC', evidenceDetail: 'Internal link count', impact: 'Medium',
       fix: 'Add contextual internal links to related pages.',
@@ -95,10 +95,10 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Content & Conversion',
     eli5Summary: highImpactCount >= 2
-      ? "Your website content needs significant work — it's either too thin, poorly structured, or missing clear calls to action."
+      ? "The content needs significant work. It is either too thin, poorly structured, or missing clear calls to action."
       : highImpactCount >= 1
-        ? 'Your content is mostly there but has some gaps.'
-        : 'Your content is well-structured with good length and clear conversion points.',
+        ? 'The content is mostly there but has some gaps.'
+        : 'The content is well-structured with good length and clear conversion points.',
     whyItMatters: 'Content is what convinces visitors to become customers.',
     overallRating: highImpactCount >= 2 ? 'Critical' : highImpactCount >= 1 ? 'Needs Work' : 'Good',
     score: highImpactCount >= 2 ? 30 : highImpactCount >= 1 ? 55 : 85,
@@ -131,10 +131,10 @@ RULES:
 - Every finding must cite real data as evidence
 - section must be "Content & Conversion" for all findings
 - Analyse: content depth (thin < 300 words), heading structure, conversion opportunities (forms, CTAs), internal linking quality, broken links, content readability
-- Judge the heading TEXT quality — do H2s tell a story? Are they keyword-rich? Are they just "About Us" boilerplate?
+- Judge the heading TEXT quality - do H2s tell a story? Are they keyword-rich? Are they just "About Us" boilerplate?
 - Rating: Good (substantial content, clear CTAs), Needs Work (gaps in content or conversion), Critical (thin content + no forms)
 - Score: 0-100
-- Use Australian English`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.`
 }
 
 async function callGemini(data: CollectedData): Promise<AnalysisResult> {
