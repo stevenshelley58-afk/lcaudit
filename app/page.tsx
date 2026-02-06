@@ -26,6 +26,16 @@ export default function HomePage() {
         body: JSON.stringify({ url }),
       })
 
+      // Vercel returns plain text for 504/502 — handle non-JSON responses
+      const contentType = response.headers.get('content-type') ?? ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        const statusLabel = response.status === 504 ? 'Function timed out' : `HTTP ${response.status}`
+        setError(`${statusLabel}: The audit took too long. Try again — some sites take longer on first run.`)
+        setErrorDetails({ status: response.status, body: text.slice(0, 500) })
+        return
+      }
+
       const data = await response.json()
 
       if (!data.success) {

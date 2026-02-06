@@ -10,6 +10,9 @@ import { ApiError, AuditError, AnalyserError, CollectorError, TimeoutError } fro
 import { AuditRequestSchema } from '@/lib/types'
 import type { ApiResponse } from '@/lib/types'
 
+// Allow up to 300s on Pro plan (capped at 60s on Hobby)
+export const maxDuration = 300
+
 export async function POST(request: Request): Promise<Response> {
   try {
     // Validate env vars on first call (fail fast)
