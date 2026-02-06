@@ -93,11 +93,11 @@ export function IdleView({ onSubmit }: IdleViewProps) {
         </span>
         <span className="flex items-center gap-2">
           <CheckCircle2 size={14} className="text-green-500" />
-          Design Fidelity
+          Design Review
         </span>
         <span className="flex items-center gap-2">
           <CheckCircle2 size={14} className="text-green-500" />
-          CRO Analysis
+          Conversion Analysis
         </span>
       </div>
     </div>
