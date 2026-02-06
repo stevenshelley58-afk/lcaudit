@@ -54,5 +54,5 @@ async function traceRedirects(url: string): Promise<RedirectHop[]> {
     }
   }
 
-  return chain
+  return [...chain]
 }
