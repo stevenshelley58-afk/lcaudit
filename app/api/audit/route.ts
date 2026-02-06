@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { collectAll } from '@/collectors'
 import { runAllAnalysers } from '@/analysers'
-import { synthesize } from '@/synthesis/synthesize'
+import { buildReport } from '@/lib/report-builder'
 import { getEnv } from '@/lib/env'
 import { validateAuditUrl } from '@/lib/url-safety'
 import { checkRateLimit, generateAuditId, extractHostname } from '@/lib/utils'
@@ -55,16 +55,16 @@ export async function POST(request: Request): Promise<Response> {
     // Wave 2: Run AI analysers (8 parallel analysers)
     const analyses = await runAllAnalysers(collectedData)
 
-    // Wave 3: Synthesize final report
+    // Wave 3: Build final report (synthesis + persistence)
     const durationMs = Date.now() - startTime
-    const report = await synthesize(
+    const report = await buildReport({
+      auditId,
       url,
       hostname,
       collectedData,
       analyses,
-      auditId,
       durationMs,
-    )
+    })
 
     return NextResponse.json({
       success: true,
