@@ -63,7 +63,10 @@ export async function collectAll(
   url: string,
   auditId: string,
 ): Promise<CollectedData> {
-  const allCollectors = [...REQUIRED_COLLECTORS, ...OPTIONAL_COLLECTORS]
+  const allCollectors: readonly CollectorDef<unknown>[] = [
+    ...REQUIRED_COLLECTORS,
+    ...OPTIONAL_COLLECTORS,
+  ]
 
   const results = await Promise.allSettled(
     allCollectors.map((c) =>
