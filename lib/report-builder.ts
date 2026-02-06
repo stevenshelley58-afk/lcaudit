@@ -28,21 +28,6 @@ function sectionIdFromTitle(title: string): string {
     .replace(/^-|-$/g, '')
 }
 
-function ratingToScore(rating: string): number | null {
-  switch (rating) {
-    case 'Good':
-      return 90
-    case 'Needs Work':
-      return 60
-    case 'Critical':
-      return 30
-    case 'Error':
-      return null
-    default:
-      return null
-  }
-}
-
 function buildSections(
   analyses: readonly AnalysisResult[],
 ): readonly AuditSection[] {
@@ -53,7 +38,7 @@ function buildSections(
     eli5Summary: analysis.eli5Summary,
     whyItMatters: analysis.whyItMatters,
     rating: analysis.overallRating,
-    score: ratingToScore(analysis.overallRating),
+    score: analysis.overallRating === 'Error' ? null : analysis.score,
     findings: [...analysis.findings],
   }))
 }
@@ -80,12 +65,58 @@ function extractTopFixes(
 function calculateOverallScore(
   analyses: readonly AnalysisResult[],
 ): number {
-  const scores = analyses
-    .map((a) => ratingToScore(a.overallRating))
-    .filter((s): s is number => s !== null)
+  const weights: Record<string, number> = {
+    'Visual & Design': 1.5,
+    'Performance & Speed': 1.5,
+    'SEO & Keywords': 1,
+    'Accessibility': 1,
+    'Security & Trust': 1,
+    'Social & Sharing': 0.75,
+    'Tech Stack & Apps': 0.75,
+    'Content & Conversion': 1,
+  }
 
-  if (scores.length === 0) return 0
-  return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
+  let weightedSum = 0
+  let totalWeight = 0
+
+  for (const a of analyses) {
+    if (a.overallRating === 'Error') continue
+    const weight = weights[a.sectionTitle] ?? 1
+    weightedSum += a.score * weight
+    totalWeight += weight
+  }
+
+  if (totalWeight === 0) return 0
+  return Math.round(weightedSum / totalWeight)
+}
+
+function generateFallbackSummary(
+  hostname: string,
+  overallScore: number,
+  analyses: readonly AnalysisResult[],
+  topFixes: readonly TopFix[],
+): string {
+  const goodCount = analyses.filter((a) => a.overallRating === 'Good').length
+  const criticalCount = analyses.filter((a) => a.overallRating === 'Critical').length
+  const errorCount = analyses.filter((a) => a.overallRating === 'Error').length
+
+  const parts: string[] = []
+  parts.push(`${hostname} scored ${overallScore}/100 overall.`)
+
+  if (goodCount > 0) {
+    parts.push(`${goodCount} section${goodCount > 1 ? 's' : ''} rated Good.`)
+  }
+  if (criticalCount > 0) {
+    parts.push(`${criticalCount} section${criticalCount > 1 ? 's' : ''} need${criticalCount === 1 ? 's' : ''} urgent attention.`)
+  }
+  if (errorCount > 0) {
+    parts.push(`${errorCount} section${errorCount > 1 ? 's' : ''} could not be analysed.`)
+  }
+  if (topFixes.length > 0) {
+    parts.push(`Top priority: ${topFixes[0].title.toLowerCase()}.`)
+  }
+
+  return parts.join(' ')
 }
 
 function extractMissingApps(
@@ -130,15 +161,29 @@ export async function buildReport({
   durationMs,
 }: BuildReportParams): Promise<AuditReport> {
   const sections = buildSections(analyses)
-  const topFixes = extractTopFixes(analyses)
-  const overallScore = calculateOverallScore(analyses)
+  const localTopFixes = extractTopFixes(analyses)
+  const localScore = calculateOverallScore(analyses)
   const missingApps = extractMissingApps(analyses)
 
   const unavailableSections = analyses
     .filter((a) => a.overallRating === 'Error')
     .map((a) => sectionIdFromTitle(a.sectionTitle))
 
-  const executiveSummary = await synthesize(hostname, overallScore, analyses, topFixes)
+  // Try AI synthesis, fall back to local computation
+  let executiveSummary: string
+  let overallScore: number
+  let topFixes: readonly TopFix[]
+
+  try {
+    const synthesis = await synthesize(hostname, analyses)
+    executiveSummary = synthesis.executiveSummary
+    overallScore = synthesis.overallScore
+    topFixes = synthesis.topFixes
+  } catch {
+    executiveSummary = generateFallbackSummary(hostname, localScore, analyses, localTopFixes)
+    overallScore = localScore
+    topFixes = localTopFixes
+  }
 
   const report: AuditReport = {
     url,

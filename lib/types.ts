@@ -268,6 +268,7 @@ export const AnalysisResultSchema = z.object({
   eli5Summary: z.string(),
   whyItMatters: z.string(),
   overallRating: RatingSchema,
+  score: z.number().min(0).max(100),
   findings: z.array(FindingSchema),
 })
 
@@ -285,6 +286,14 @@ export const TopFixSchema = z.object({
 })
 
 export type TopFix = z.infer<typeof TopFixSchema>
+
+export const SynthesisResultSchema = z.object({
+  executiveSummary: z.string(),
+  overallScore: z.number().min(0).max(100),
+  topFixes: z.array(TopFixSchema),
+})
+
+export type SynthesisResult = z.infer<typeof SynthesisResultSchema>
 
 export const RecommendedAppSchema = z.object({
   name: z.string(),

@@ -32,6 +32,7 @@ function makeErrorResult(name: string, error: Error): AnalysisResult {
     eli5Summary: `Analysis unavailable — ${error.message}`,
     whyItMatters: 'This section could not be analysed due to an error.',
     overallRating: 'Error',
+    score: 0,
     findings: [],
   }
 }
