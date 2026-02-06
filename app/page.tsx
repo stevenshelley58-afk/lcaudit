@@ -3,36 +3,27 @@
 import { useState, useRef } from 'react'
 import { UrlInput } from '@/components/UrlInput'
 import { AuditReport } from '@/components/AuditReport'
-import type { AuditReport as AuditReportType, AuditPage } from '@/lib/types'
-
-const PAGE_LABEL_DISPLAY: Record<string, string> = {
-  'homepage': 'Homepage',
-  'product-page': 'Product Page',
-}
+import type { AuditReport as AuditReportType } from '@/lib/types'
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
-  const [reports, setReports] = useState<readonly AuditReportType[]>([])
-  const [activeTab, setActiveTab] = useState(0)
+  const [report, setReport] = useState<AuditReportType | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [partialErrors, setPartialErrors] = useState<readonly string[]>([])
   const [errorDetails, setErrorDetails] = useState<unknown>(null)
-  const lastPages = useRef<readonly AuditPage[]>([])
+  const lastUrl = useRef<string>('')
 
-  async function handleAudit(pages: readonly AuditPage[]) {
+  async function handleAudit(url: string) {
     setIsLoading(true)
     setError(null)
     setErrorDetails(null)
-    setReports([])
-    setPartialErrors([])
-    setActiveTab(0)
-    lastPages.current = pages
+    setReport(null)
+    lastUrl.current = url
 
     try {
       const response = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pages }),
+        body: JSON.stringify({ url }),
       })
 
       const data = await response.json()
@@ -43,24 +34,24 @@ export default function HomePage() {
         return
       }
 
-      setReports(data.data.reports as AuditReportType[])
-      if (data.data.errors) {
-        setPartialErrors(data.data.errors as string[])
-      }
-    } catch {
-      setError('Network error. Please try again.')
+      setReport(data.data as AuditReportType)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setError(`Network error: ${message}`)
+      setErrorDetails({
+        type: err instanceof TypeError ? 'TypeError (likely timeout or connection failure)' : typeof err,
+        message,
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
   function handleRetry() {
-    if (lastPages.current.length > 0) {
-      handleAudit(lastPages.current)
+    if (lastUrl.current) {
+      handleAudit(lastUrl.current)
     }
   }
-
-  const activeReport = reports[activeTab] ?? null
 
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-16">
@@ -115,43 +106,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {partialErrors.length > 0 && (
-        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-[32px] text-sm text-dark max-w-xl w-full animate-fade-in">
-          <p className="font-medium text-warning text-center mb-1">
-            Partial errors
-          </p>
-          {partialErrors.map((err) => (
-            <p key={err} className="text-xs text-medium text-center">{err}</p>
-          ))}
-        </div>
-      )}
-
-      {reports.length > 0 && (
-        <div className="mt-10 w-full flex flex-col items-center">
-          {reports.length > 1 && (
-            <div className="flex gap-2 mb-6">
-              {reports.map((r, i) => (
-                <button
-                  key={r.pageLabel}
-                  type="button"
-                  onClick={() => setActiveTab(i)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                    activeTab === i
-                      ? 'bg-black text-white'
-                      : 'bg-gray-100 text-dark hover:bg-gray-200'
-                  }`}
-                >
-                  {PAGE_LABEL_DISPLAY[r.pageLabel] ?? r.pageLabel}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {activeReport && (
-            <div className="w-full flex justify-center">
-              <AuditReport report={activeReport} />
-            </div>
-          )}
+      {report && (
+        <div className="mt-10 w-full flex justify-center">
+          <AuditReport report={report} />
         </div>
       )}
     </main>

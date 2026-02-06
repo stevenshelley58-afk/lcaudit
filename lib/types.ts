@@ -4,19 +4,8 @@ import { z } from 'zod'
 // Input Validation
 // ============================================================
 
-export const PageLabelSchema = z.enum(['homepage', 'product-page'])
-
-export type PageLabel = z.infer<typeof PageLabelSchema>
-
-export const AuditPageSchema = z.object({
-  url: z.string().min(1, 'URL is required'),
-  label: PageLabelSchema,
-})
-
-export type AuditPage = z.infer<typeof AuditPageSchema>
-
 export const AuditRequestSchema = z.object({
-  pages: z.array(AuditPageSchema).min(1).max(2),
+  url: z.string().min(1, 'URL is required'),
 })
 
 export type AuditRequest = z.infer<typeof AuditRequestSchema>
@@ -330,7 +319,6 @@ export type AuditSection = z.infer<typeof AuditSectionSchema>
 export const AuditReportSchema = z.object({
   url: z.string(),
   hostname: z.string(),
-  pageLabel: PageLabelSchema,
   generatedAt: z.string(),
   auditDurationMs: z.number(),
   overallScore: z.number(),

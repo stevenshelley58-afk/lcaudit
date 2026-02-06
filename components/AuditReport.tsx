@@ -49,12 +49,7 @@ export function AuditReport({ report }: AuditReportProps) {
         <ScoreGauge score={report.overallScore} />
         <div className="flex-1 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-3 mb-2">
-            <h2 className="text-xl font-bold text-black">
-              {report.hostname}
-              <span className="ml-2 text-sm font-medium text-medium">
-                ({report.pageLabel === 'product-page' ? 'Product Page' : 'Homepage'})
-              </span>
-            </h2>
+            <h2 className="text-xl font-bold text-black">{report.hostname}</h2>
             <span className="text-xs text-medium font-mono">
               {(report.auditDurationMs / 1000).toFixed(1)}s
             </span>
