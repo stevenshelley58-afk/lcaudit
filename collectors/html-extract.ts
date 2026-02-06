@@ -62,7 +62,7 @@ function parseHtml(html: string, baseUrl: string): HtmlData {
     ogTags: {
       title: metaContent($, 'og:title'),
       description: metaContent($, 'og:description'),
-      image: metaContent($, 'og:image'),
+      image: resolveUrl(metaContent($, 'og:image'), parsedBase),
       type: metaContent($, 'og:type'),
       url: metaContent($, 'og:url'),
     },
@@ -70,7 +70,7 @@ function parseHtml(html: string, baseUrl: string): HtmlData {
       card: metaName($, 'twitter:card'),
       title: metaName($, 'twitter:title'),
       description: metaName($, 'twitter:description'),
-      image: metaName($, 'twitter:image'),
+      image: resolveUrl(metaName($, 'twitter:image'), parsedBase),
     },
     schemaOrg: extractSchemaOrg($),
     forms: $('form').length,
@@ -157,6 +157,15 @@ function metaName(
   return (
     $(`meta[name="${name}"]`).attr('content')?.trim() || null
   )
+}
+
+function resolveUrl(raw: string | null, base: URL): string | null {
+  if (!raw) return null
+  try {
+    return new URL(raw, base.href).href
+  } catch {
+    return null
+  }
 }
 
 function parseIntOrNull(value: string | undefined): number | null {

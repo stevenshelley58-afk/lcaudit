@@ -85,6 +85,46 @@ function AppTag({ name, category }: { readonly name: string; readonly category: 
   )
 }
 
+function SocialPreviewCard({
+  socialPreview,
+}: {
+  readonly socialPreview: AuditReportType['socialPreview']
+}) {
+  const [imgError, setImgError] = useState(false)
+  const showImage = socialPreview.ogImage && !imgError
+
+  return (
+    <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6">
+      <h2 className="text-base font-bold text-black mb-4">Social Preview</h2>
+      <div className="rounded-2xl border border-gray-200 overflow-hidden">
+        {showImage && (
+          <div className="relative w-full aspect-[1.91/1] bg-light">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={socialPreview.ogImage!}
+              alt="Open Graph preview image"
+              className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          </div>
+        )}
+        <div className="p-4">
+          {socialPreview.ogTitle && (
+            <p className="font-semibold text-dark text-sm">
+              {socialPreview.ogTitle}
+            </p>
+          )}
+          {socialPreview.ogDescription && (
+            <p className="text-xs text-medium mt-1 line-clamp-2">
+              {socialPreview.ogDescription}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AuditReport({ report }: AuditReportProps) {
   return (
     <div className="w-full max-w-3xl space-y-6 animate-fade-in">
@@ -166,36 +206,7 @@ export function AuditReport({ report }: AuditReportProps) {
 
       {/* Social Preview */}
       {(report.socialPreview.ogTitle || report.socialPreview.ogImage) && (
-        <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6">
-          <h2 className="text-base font-bold text-black mb-4">
-            Social Preview
-          </h2>
-          <div className="rounded-2xl border border-gray-200 overflow-hidden">
-            {report.socialPreview.ogImage && (
-              <div className="relative w-full aspect-[1.91/1] bg-light">
-                <Image
-                  src={report.socialPreview.ogImage}
-                  alt="Open Graph preview image"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 640px"
-                />
-              </div>
-            )}
-            <div className="p-4">
-              {report.socialPreview.ogTitle && (
-                <p className="font-semibold text-dark text-sm">
-                  {report.socialPreview.ogTitle}
-                </p>
-              )}
-              {report.socialPreview.ogDescription && (
-                <p className="text-xs text-medium mt-1 line-clamp-2">
-                  {report.socialPreview.ogDescription}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        <SocialPreviewCard socialPreview={report.socialPreview} />
       )}
 
       {/* Detected Apps + Missing Apps */}
