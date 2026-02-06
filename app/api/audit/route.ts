@@ -75,11 +75,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 }
 
-const isDev = process.env.NODE_ENV !== 'production'
-
-function devDetails(error: unknown): unknown {
-  if (!isDev) return undefined
-
+function errorDetails(error: unknown): unknown {
   const base: Record<string, unknown> = {
     stack: error instanceof Error ? error.stack : undefined,
     name: error instanceof Error ? error.name : typeof error,
@@ -119,7 +115,7 @@ function handleError(error: unknown): Response {
       {
         success: false,
         error: error.message,
-        details: devDetails(error),
+        details: errorDetails(error),
       } satisfies ApiResponse<never>,
       { status: error.statusCode },
     )
@@ -130,7 +126,7 @@ function handleError(error: unknown): Response {
       {
         success: false,
         error: 'Validation failed',
-        details: isDev ? { zodErrors: error.errors, stack: error.stack } : error.errors,
+        details: { zodErrors: error.errors, stack: error.stack },
       } satisfies ApiResponse<never>,
       { status: 400 },
     )
@@ -141,13 +137,13 @@ function handleError(error: unknown): Response {
       {
         success: false,
         error: error.message,
-        details: devDetails(error),
+        details: errorDetails(error),
       } satisfies ApiResponse<never>,
       { status: 502 },
     )
   }
 
-  // Unknown error — surface details in dev, hide in production
+  // Unknown error — always surface message + details for debugging
   const message = error instanceof Error
     ? error.message
     : 'An unexpected error occurred. Please try again.'
@@ -155,8 +151,8 @@ function handleError(error: unknown): Response {
   return NextResponse.json(
     {
       success: false,
-      error: isDev ? message : 'An unexpected error occurred. Please try again.',
-      details: devDetails(error),
+      error: message,
+      details: errorDetails(error),
     } satisfies ApiResponse<never>,
     { status: 500 },
   )
