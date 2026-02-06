@@ -35,7 +35,8 @@ RULES:
 - Rating: Good (minor issues only), Needs Work (2+ medium issues), Critical (missing title OR no H1 OR not indexed)
 - Score: 0-100 based on severity of issues found
 - If multiple H1s exist, that is a finding (not "No H1 found")
-- Use Australian English`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
+- eli5Summary must NOT start with "The website" or "The site". Vary your opening - lead with what matters most (e.g. "Search engines can find this page, but...", "Missing a meta description means...", "Good foundations with a few gaps...").`
 }
 
 async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {

@@ -39,7 +39,8 @@ RULES:
 - Check: alt text, heading hierarchy, language attribute, form labels, colour contrast (from diagnostics), viewport
 - Rating: Good (score ≥ 90 AND no High-impact failures), Needs Work (score 50-89 OR High-impact failures), Critical (score < 50)
 - Score: 0-100, adjusted down from Lighthouse score if High-impact issues found
-- Use Australian English`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
+- eli5Summary must NOT start with "The website" or "The site". Vary your opening - lead with the most impactful issue (e.g. "Screen reader users will struggle with...", "Mostly accessible, but images lack descriptions...", "Several barriers exist for disabled visitors...").`
 }
 
 async function callGemini(data: CollectedData): Promise<AnalysisResult> {

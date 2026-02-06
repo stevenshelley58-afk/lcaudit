@@ -94,10 +94,10 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Social & Sharing',
     eli5Summary: missingCount >= 3
-      ? "When people share the link on social media, it looks bare - no image, no description."
+      ? "Shared links look bare on social media - no image, no description, just a plain URL."
       : missingCount >= 1
-        ? 'The social sharing setup is partially complete but missing some key elements.'
-        : 'The social sharing tags are well-configured.',
+        ? 'Social sharing is partially set up but missing some key elements for a polished preview.'
+        : 'Social sharing tags are well-configured and links will look great when shared.',
     whyItMatters: 'Social sharing is free marketing. A well-configured preview card can dramatically increase click-through rates.',
     overallRating: missingCount >= 3 ? 'Critical' : missingCount >= 1 ? 'Needs Work' : 'Good',
     score: missingCount >= 3 ? 25 : missingCount >= 1 ? 60 : 90,

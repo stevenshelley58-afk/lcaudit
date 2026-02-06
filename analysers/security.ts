@@ -127,8 +127,8 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Security & Trust',
     eli5Summary: criticalCount >= 3
-      ? 'The site is missing several important security protections.'
-      : 'The site has basic security in place but could be hardened further.',
+      ? 'Several important security protections are missing, leaving visitors exposed.'
+      : 'Basic security is in place, but a few hardening steps would strengthen trust.',
     whyItMatters: 'Security headers protect visitors from attacks like clickjacking, XSS, and data interception.',
     overallRating: criticalCount >= 3 ? 'Critical' : criticalCount >= 1 ? 'Needs Work' : 'Good',
     score: criticalCount >= 3 ? 25 : criticalCount >= 1 ? 55 : 85,

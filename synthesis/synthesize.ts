@@ -24,7 +24,7 @@ function buildInput(
   return JSON.stringify({ hostname, sections })
 }
 
-const SYSTEM_PROMPT = `You are a web audit report writer. Write for a business owner with zero technical knowledge. Australian English.
+const SYSTEM_PROMPT = `You are a web audit report writer. Write for a business owner with zero technical knowledge. English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
 
 TASK:
 1. executiveSummary: 3-5 sentences. Zero jargon. What's working, what's broken, what to fix first. Speak directly to the business owner.
@@ -34,8 +34,9 @@ TASK:
 RULES:
 - Discard any finding without evidence
 - If a section has "Error" rating, mention it briefly ("We couldn't check X") but don't let it tank the score
-- topFixes descriptions must be actionable — not "improve SEO" but "add a meta description between 120-160 characters"
-- impact must be one of: "High", "Medium", "Low"`
+- topFixes descriptions must be actionable - not "improve SEO" but "add a meta description between 120-160 characters"
+- impact must be one of: "High", "Medium", "Low"
+- executiveSummary must NOT start with "The website" or "The site". Lead with a verdict or the most important takeaway.`
 
 async function callGpt5(
   hostname: string,
@@ -96,7 +97,7 @@ export async function synthesize(
   try {
     return await callGpt5(hostname, analyses)
   } catch (err) {
-    console.log(`[synthesis] GPT-5 failed: ${(err as Error).message} — falling back to Gemini Flash`)
+    console.log(`[synthesis] GPT-5 failed: ${(err as Error).message}. Falling back to Gemini Flash`)
     return await callGeminiFallback(hostname, analyses)
   }
 }

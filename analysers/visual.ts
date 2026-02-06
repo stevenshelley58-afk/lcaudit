@@ -17,25 +17,26 @@ CONTEXT:
 - Word count: ${html.wordCount}
 
 ANALYSE FOR:
-1. Layout and visual hierarchy — is the most important content prominent?
-2. Typography — readable font sizes, consistent type scale, line height
-3. Mobile responsiveness — does the mobile version work well, not just shrink?
-4. Colour contrast — can all text be read easily against backgrounds?
-5. CTA visibility — are call-to-action buttons obvious and easy to find?
-6. Image quality — are images sharp, properly cropped, not stretched?
-7. Whitespace and breathing room — is the design cluttered or balanced?
-8. Brand consistency — cohesive colour palette, consistent styling
+1. Layout and visual hierarchy - is the most important content prominent?
+2. Typography - readable font sizes, consistent type scale, line height
+3. Mobile responsiveness - does the mobile version work well, not just shrink?
+4. Colour contrast - can all text be read easily against backgrounds?
+5. CTA visibility - are call-to-action buttons obvious and easy to find?
+6. Image quality - are images sharp, properly cropped, not stretched?
+7. Whitespace and breathing room - is the design cluttered or balanced?
+8. Brand consistency - cohesive colour palette, consistent styling
 
 RULES:
 - sectionTitle must be "Visual & Design"
 - Every finding must reference something specific you can see in the screenshots
 - evidenceType must be "SCREENSHOT" for visual findings
-- evidenceDetail must describe where in the screenshot you see the issue (e.g. "mobile — hero section", "desktop — navigation bar")
+- evidenceDetail must describe where in the screenshot you see the issue (e.g. "mobile - hero section", "desktop - navigation bar")
 - section must be "Visual & Design" for all findings
 - Rating: Good (polished, professional), Needs Work (functional but rough), Critical (major usability issues)
 - Score: 0-100 based on overall visual quality
-- Be specific — don't say "some issues", say exactly what you see
-- Use Australian English`
+- Be specific - don't say "some issues", say exactly what you see
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
+- eli5Summary must NOT start with "The website" or "The site". Vary your opening - lead with what stands out (e.g. "Clean layout but...", "Readability suffers from...", "A strong first impression, though...").`
 }
 
 async function callGeminiAlpha(data: CollectedData): Promise<AnalysisResult> {

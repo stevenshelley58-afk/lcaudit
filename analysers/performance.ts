@@ -28,7 +28,8 @@ RULES:
 - Score: map directly from the mobile performance score (0-100)
 - Include findings for LCP, TBT, CLS, FCP at minimum if they exceed thresholds
 - LCP good < 2.5s, TBT good < 200ms, CLS good < 0.1, FCP good < 1.8s
-- Use Australian English`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
+- eli5Summary must NOT start with "The website" or "The site". Vary your opening - lead with the key finding (e.g. "Desktop loads fast but mobile struggles...", "Page speed is solid across devices...", "Slow load times are hurting...").`
 }
 
 async function callGemini(data: CollectedData): Promise<AnalysisResult> {

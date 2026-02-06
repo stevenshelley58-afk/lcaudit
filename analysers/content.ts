@@ -95,10 +95,10 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Content & Conversion',
     eli5Summary: highImpactCount >= 2
-      ? "The content needs significant work. It is either too thin, poorly structured, or missing clear calls to action."
+      ? "Significant content gaps exist - pages are too thin, poorly structured, or missing clear calls to action."
       : highImpactCount >= 1
-        ? 'The content is mostly there but has some gaps.'
-        : 'The content is well-structured with good length and clear conversion points.',
+        ? 'Most of the content is solid, but a few gaps are worth addressing.'
+        : 'Well-structured content with good length and clear conversion points.',
     whyItMatters: 'Content is what convinces visitors to become customers.',
     overallRating: highImpactCount >= 2 ? 'Critical' : highImpactCount >= 1 ? 'Needs Work' : 'Good',
     score: highImpactCount >= 2 ? 30 : highImpactCount >= 1 ? 55 : 85,

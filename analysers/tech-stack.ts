@@ -109,8 +109,8 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Tech Stack & Apps',
     eli5Summary: techStack.platform
-      ? `The site runs on ${techStack.platform} with ${techStack.detectedApps.length} technologies detected.`
-      : `${techStack.detectedApps.length} technologies detected on the site.`,
+      ? `Built on ${techStack.platform} with ${techStack.detectedApps.length} technologies detected.`
+      : `${techStack.detectedApps.length} technologies detected powering this site.`,
     whyItMatters: 'The right tech stack powers growth. Analytics, SEO tools, and performance monitoring drive improvement.',
     overallRating: highImpactCount >= 2 ? 'Critical' : highImpactCount >= 1 ? 'Needs Work' : 'Good',
     score: highImpactCount >= 2 ? 30 : highImpactCount >= 1 ? 60 : 85,
