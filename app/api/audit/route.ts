@@ -51,6 +51,7 @@ export async function POST(request: Request): Promise<Response> {
     const auditId = generateAuditId()
     const hostname = extractHostname(url)
     const startTime = Date.now()
+    console.log(`[pipeline] Starting audit for ${hostname} (${url})`)
 
     // Wave 1: Collect data (10 parallel collectors)
     const collectedData = await collectAll(url, auditId)
@@ -59,6 +60,7 @@ export async function POST(request: Request): Promise<Response> {
     const analyses = await runAllAnalysers(collectedData)
 
     // Wave 3: Build final report (synthesis + persistence)
+    const t3 = Date.now()
     const durationMs = Date.now() - startTime
     const report = await buildReport({
       auditId,
@@ -68,6 +70,8 @@ export async function POST(request: Request): Promise<Response> {
       analyses,
       durationMs,
     })
+    console.log(`[pipeline] Wave 3 (synthesis + report) done in ${Date.now() - t3}ms`)
+    console.log(`[pipeline] Total audit: ${Date.now() - startTime}ms`)
 
     return NextResponse.json({
       success: true,

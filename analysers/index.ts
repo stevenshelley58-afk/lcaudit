@@ -40,11 +40,23 @@ function makeErrorResult(name: string, error: Error): AnalysisResult {
 export async function runAllAnalysers(
   data: CollectedData,
 ): Promise<readonly AnalysisResult[]> {
+  const waveStart = Date.now()
+
   const results = await Promise.allSettled(
-    ANALYSERS.map((a) =>
-      withTimeout(a.fn(data), AI_TIMEOUT_MS, a.name),
-    ),
+    ANALYSERS.map(async (a) => {
+      const t0 = Date.now()
+      try {
+        const result = await withTimeout(a.fn(data), AI_TIMEOUT_MS, a.name)
+        console.log(`[analyser] ${a.name} OK in ${Date.now() - t0}ms`)
+        return result
+      } catch (err) {
+        console.log(`[analyser] ${a.name} FAILED in ${Date.now() - t0}ms: ${(err as Error).message}`)
+        throw err
+      }
+    }),
   )
+
+  console.log(`[pipeline] Wave 2 (analysers) done in ${Date.now() - waveStart}ms`)
 
   return results.map((result, index) => {
     if (result.status === 'fulfilled') {

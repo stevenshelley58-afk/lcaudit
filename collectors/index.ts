@@ -68,11 +68,23 @@ export async function collectAll(
     ...OPTIONAL_COLLECTORS,
   ]
 
+  const waveStart = Date.now()
+
   const results = await Promise.allSettled(
-    allCollectors.map((c) =>
-      withTimeout(c.fn(url, auditId), COLLECTOR_TIMEOUT_MS, c.name),
-    ),
+    allCollectors.map(async (c) => {
+      const t0 = Date.now()
+      try {
+        const result = await withTimeout(c.fn(url, auditId), COLLECTOR_TIMEOUT_MS, c.name)
+        console.log(`[collector] ${c.name} OK in ${Date.now() - t0}ms`)
+        return result
+      } catch (err) {
+        console.log(`[collector] ${c.name} FAILED in ${Date.now() - t0}ms: ${(err as Error).message}`)
+        throw err
+      }
+    }),
   )
+
+  console.log(`[pipeline] Wave 1 (collectors) done in ${Date.now() - waveStart}ms`)
 
   // Check required collectors (indices 0, 1, 2)
   const failedRequired = REQUIRED_COLLECTORS.reduce<readonly string[]>(
