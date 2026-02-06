@@ -55,13 +55,13 @@ export function IdleView({ onSubmit }: IdleViewProps) {
 
   return (
     <div className="animate-fade-in-up w-full max-w-3xl mx-auto text-center">
-      <h2 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[1.05] mb-8 text-black">
+      <h2 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[1.05] mb-8 text-black whitespace-nowrap">
         Audit your website.
         <br />
         <span className="text-gray-400">Instantly.</span>
       </h2>
       <p className="text-xl text-gray-500 mb-12 leading-relaxed max-w-2xl mx-auto">
-        SEO, technical, and design analysis in one scan.
+        SEO, technical, and design<br className="md:hidden" /> analysis in one scan.
       </p>
 
       <form onSubmit={handleSubmit} className="max-w-xl mx-auto">
@@ -86,18 +86,18 @@ export function IdleView({ onSubmit }: IdleViewProps) {
         </div>
       </form>
 
-      <div className="mt-12 flex items-center justify-center gap-8 text-xs font-mono text-gray-400 uppercase tracking-widest">
+      <div className="mt-12 flex items-center justify-center gap-4 md:gap-8 text-xs font-mono text-gray-400 uppercase tracking-widest">
         <span className="flex items-center gap-2">
           <CheckCircle2 size={14} className="text-green-500" />
-          Technical SEO
+          Technical<span className="hidden md:inline">&nbsp;SEO</span>
         </span>
         <span className="flex items-center gap-2">
           <CheckCircle2 size={14} className="text-green-500" />
-          Design Review
+          Design<span className="hidden md:inline">&nbsp;Review</span>
         </span>
         <span className="flex items-center gap-2">
           <CheckCircle2 size={14} className="text-green-500" />
-          Conversion Analysis
+          Conversion<span className="hidden md:inline">&nbsp;Analysis</span>
         </span>
       </div>
     </div>
