@@ -30,61 +30,65 @@ export async function collectLinkCheck(
     linksToCheck.map((link) => checkLink(link, url)),
   )
 
-  const broken: BrokenLink[] = []
-  const redirects: RedirectLink[] = []
+  const { broken, redirects } = results.reduce<{
+    readonly broken: readonly BrokenLink[]
+    readonly redirects: readonly RedirectLink[]
+  }>(
+    (acc, result, i) => {
+      if (result.status === 'rejected') return acc
 
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i]
-    if (result.status === 'rejected') continue
+      const { statusCode, redirectsTo } = result.value
+      const linkUrl = linksToCheck[i]
 
-    const { statusCode, redirectsTo } = result.value
-    const linkUrl = linksToCheck[i]
-
-    if (statusCode >= 400) {
-      broken.push({
-        url: linkUrl,
-        statusCode,
-        sourceUrl: url,
-      })
-    } else if (statusCode >= 300 && statusCode < 400 && redirectsTo) {
-      redirects.push({
-        url: linkUrl,
-        redirectsTo,
-        statusCode,
-      })
-    }
-  }
+      if (statusCode >= 400) {
+        return {
+          ...acc,
+          broken: [...acc.broken, { url: linkUrl, statusCode, sourceUrl: url }],
+        }
+      }
+      if (statusCode >= 300 && statusCode < 400 && redirectsTo) {
+        return {
+          ...acc,
+          redirects: [...acc.redirects, { url: linkUrl, redirectsTo, statusCode }],
+        }
+      }
+      return acc
+    },
+    { broken: [], redirects: [] },
+  )
 
   return {
     totalChecked: linksToCheck.length,
-    broken,
-    redirects,
+    broken: [...broken],
+    redirects: [...redirects],
   }
 }
 
 function extractInternalLinks(html: string, baseUrl: string): string[] {
   const $ = cheerio.load(html)
   const base = new URL(baseUrl)
-  const links: string[] = []
 
-  $('a[href]').each((_, el) => {
-    const href = $(el).attr('href')
-    if (!href) return
+  const hrefs: string[] = $('a[href]')
+    .map((_, el) => $(el).attr('href') ?? '')
+    .get()
+    .filter((href) => href.length > 0)
 
+  const resolved = hrefs.reduce<readonly string[]>((acc, href) => {
     try {
-      const resolved = new URL(href, base.href)
+      const url = new URL(href, base.href)
       if (
-        resolved.hostname === base.hostname &&
-        (resolved.protocol === 'http:' || resolved.protocol === 'https:')
+        url.hostname === base.hostname &&
+        (url.protocol === 'http:' || url.protocol === 'https:')
       ) {
-        links.push(resolved.href)
+        return [...acc, url.href]
       }
+      return acc
     } catch {
-      // Skip malformed URLs
+      return acc
     }
-  })
+  }, [])
 
-  return [...new Set(links)]
+  return [...new Set(resolved)]
 }
 
 interface LinkCheckResult {

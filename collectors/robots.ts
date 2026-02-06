@@ -39,7 +39,7 @@ function extractDisallowRules(content: string): string[] {
   return content
     .split('\n')
     .filter((line) => line.toLowerCase().startsWith('disallow:'))
-    .map((line) => line.split(':').slice(1).join(':').trim())
+    .map((line) => line.substring(line.indexOf(':') + 1).trim())
     .filter((rule) => rule.length > 0)
 }
 
@@ -47,6 +47,6 @@ function extractSitemapRefs(content: string): string[] {
   return content
     .split('\n')
     .filter((line) => line.toLowerCase().startsWith('sitemap:'))
-    .map((line) => line.split(':').slice(1).join(':').trim())
+    .map((line) => line.substring(line.indexOf(':') + 1).trim())
     .filter((ref) => ref.length > 0)
 }

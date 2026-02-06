@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { UrlInput } from '@/components/UrlInput'
+import type { CollectedData } from '@/lib/types'
 
 interface AuditResult {
   readonly auditId: string
   readonly url: string
   readonly hostname: string
   readonly durationMs: number
-  readonly collectedData: unknown
+  readonly collectedData: CollectedData
 }
 
 export default function HomePage() {

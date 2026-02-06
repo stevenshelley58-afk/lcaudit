@@ -24,7 +24,7 @@ export async function collectSslDns(
 }
 
 async function traceRedirects(url: string): Promise<readonly RedirectHop[]> {
-  const chain: RedirectHop[] = []
+  let chain: readonly RedirectHop[] = []
   let currentUrl = url
 
   for (let i = 0; i < MAX_REDIRECTS; i++) {
@@ -35,16 +35,12 @@ async function traceRedirects(url: string): Promise<readonly RedirectHop[]> {
         headers: { 'User-Agent': USER_AGENT },
       })
 
-      chain.push({
-        url: currentUrl,
-        statusCode: response.status,
-      })
+      chain = [...chain, { url: currentUrl, statusCode: response.status }]
 
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('location')
         if (!location) break
 
-        // Resolve relative redirects
         try {
           currentUrl = new URL(location, currentUrl).href
         } catch {

@@ -320,8 +320,8 @@ export const AuditReportSchema = z.object({
   detectedApps: z.array(DetectedAppSchema),
   missingApps: z.array(RecommendedAppSchema),
   screenshots: z.object({
-    desktop: z.string(),
-    mobile: z.string(),
+    desktop: z.string().url(),
+    mobile: z.string().url(),
   }),
   socialPreview: z.object({
     ogImage: z.string().nullable(),

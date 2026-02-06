@@ -88,11 +88,9 @@ function detectTheme(
   $: cheerio.CheerioAPI,
   html: string,
 ): string | null {
-  // WordPress theme detection
   const themeMatch = html.match(/wp-content\/themes\/([^/]+)/)
   if (themeMatch) return themeMatch[1]
 
-  // Shopify theme
   const shopifyTheme = $('meta[name="theme-name"]').attr('content')
   if (shopifyTheme) return shopifyTheme
 
@@ -104,87 +102,115 @@ function detectApps(
   html: string,
   headers: Record<string, string>,
 ): DetectedApp[] {
-  const apps: DetectedApp[] = []
+  return [
+    ...detectAnalyticsApps(html),
+    ...detectSupportApps(html),
+    ...detectCommerceApps(html),
+    ...detectFontApps(html),
+    ...detectInfraApps(html, headers),
+    ...detectFrameworkApps($, html),
+  ]
+}
 
-  // Analytics
-  if (html.includes('google-analytics.com') || html.includes('gtag')) {
-    apps.push({ name: 'Google Analytics', category: 'Analytics', version: null })
-  }
-  if (html.includes('googletagmanager.com')) {
-    apps.push({ name: 'Google Tag Manager', category: 'Tag Management', version: null })
-  }
-  if (html.includes('connect.facebook.net') || html.includes('fbq(')) {
-    apps.push({ name: 'Meta Pixel', category: 'Analytics', version: null })
-  }
-  if (html.includes('hotjar.com')) {
-    apps.push({ name: 'Hotjar', category: 'Analytics', version: null })
-  }
-  if (html.includes('clarity.ms')) {
-    apps.push({ name: 'Microsoft Clarity', category: 'Analytics', version: null })
-  }
+function detectAnalyticsApps(html: string): readonly DetectedApp[] {
+  const app = (name: string, category: string): DetectedApp => ({
+    name,
+    category,
+    version: null,
+  })
 
-  // Chat / Support
-  if (html.includes('intercom.com') || html.includes('Intercom(')) {
-    apps.push({ name: 'Intercom', category: 'Customer Support', version: null })
-  }
-  if (html.includes('crisp.chat')) {
-    apps.push({ name: 'Crisp', category: 'Customer Support', version: null })
-  }
-  if (html.includes('tawk.to')) {
-    apps.push({ name: 'Tawk.to', category: 'Customer Support', version: null })
-  }
-  if (html.includes('drift.com') || html.includes('Drift(')) {
-    apps.push({ name: 'Drift', category: 'Customer Support', version: null })
-  }
+  return [
+    ...(html.includes('google-analytics.com') || html.includes('gtag')
+      ? [app('Google Analytics', 'Analytics')]
+      : []),
+    ...(html.includes('googletagmanager.com')
+      ? [app('Google Tag Manager', 'Tag Management')]
+      : []),
+    ...(html.includes('connect.facebook.net') || html.includes('fbq(')
+      ? [app('Meta Pixel', 'Analytics')]
+      : []),
+    ...(html.includes('hotjar.com') ? [app('Hotjar', 'Analytics')] : []),
+    ...(html.includes('clarity.ms')
+      ? [app('Microsoft Clarity', 'Analytics')]
+      : []),
+  ]
+}
 
-  // CMS / eCommerce
+function detectSupportApps(html: string): readonly DetectedApp[] {
+  const app = (name: string): DetectedApp => ({
+    name,
+    category: 'Customer Support',
+    version: null,
+  })
+
+  return [
+    ...(html.includes('intercom.com') || html.includes('Intercom(')
+      ? [app('Intercom')]
+      : []),
+    ...(html.includes('crisp.chat') ? [app('Crisp')] : []),
+    ...(html.includes('tawk.to') ? [app('Tawk.to')] : []),
+    ...(html.includes('drift.com') || html.includes('Drift(')
+      ? [app('Drift')]
+      : []),
+  ]
+}
+
+function detectCommerceApps(html: string): readonly DetectedApp[] {
   if (html.includes('cdn.shopify.com/s/files') || html.includes('shopify-buy')) {
-    apps.push({ name: 'Shopify Buy Button', category: 'eCommerce', version: null })
+    return [{ name: 'Shopify Buy Button', category: 'eCommerce', version: null }]
   }
+  return []
+}
 
-  // Fonts
-  if (html.includes('fonts.googleapis.com') || html.includes('fonts.gstatic.com')) {
-    apps.push({ name: 'Google Fonts', category: 'Font', version: null })
-  }
-  if (html.includes('use.typekit.net')) {
-    apps.push({ name: 'Adobe Fonts', category: 'Font', version: null })
-  }
+function detectFontApps(html: string): readonly DetectedApp[] {
+  return [
+    ...(html.includes('fonts.googleapis.com') || html.includes('fonts.gstatic.com')
+      ? [{ name: 'Google Fonts', category: 'Font', version: null }]
+      : []),
+    ...(html.includes('use.typekit.net')
+      ? [{ name: 'Adobe Fonts', category: 'Font', version: null }]
+      : []),
+  ]
+}
 
-  // Security / Performance
-  if (headers['server']?.toLowerCase().includes('cloudflare') || html.includes('cloudflare')) {
-    apps.push({ name: 'Cloudflare', category: 'CDN', version: null })
-  }
-  if (html.includes('cdn.jsdelivr.net')) {
-    apps.push({ name: 'jsDelivr', category: 'CDN', version: null })
-  }
+function detectInfraApps(
+  html: string,
+  headers: Record<string, string>,
+): readonly DetectedApp[] {
+  return [
+    ...(headers['server']?.toLowerCase().includes('cloudflare') || html.includes('cloudflare')
+      ? [{ name: 'Cloudflare', category: 'CDN', version: null }]
+      : []),
+    ...(html.includes('cdn.jsdelivr.net')
+      ? [{ name: 'jsDelivr', category: 'CDN', version: null }]
+      : []),
+  ]
+}
 
-  // Frameworks
+function detectFrameworkApps(
+  $: cheerio.CheerioAPI,
+  html: string,
+): readonly DetectedApp[] {
   const reactMatch = html.match(/__REACT_DEVTOOLS_GLOBAL_HOOK__|react[-.](\d+)/)
-  if (reactMatch || html.includes('__reactContainer') || $('[data-reactroot]').length > 0) {
-    apps.push({ name: 'React', category: 'JavaScript Framework', version: null })
-  }
-  if (html.includes('Vue.js') || $('[data-v-]').length > 0) {
-    apps.push({ name: 'Vue.js', category: 'JavaScript Framework', version: null })
-  }
-  if (html.includes('ng-version') || $('[ng-version]').length > 0) {
-    const ngVersion = $('[ng-version]').attr('ng-version') ?? null
-    apps.push({ name: 'Angular', category: 'JavaScript Framework', version: ngVersion })
-  }
+  const hasReact = reactMatch || html.includes('__reactContainer') || $('[data-reactroot]').length > 0
+  const hasVue = html.includes('Vue.js') || $('[data-v-]').length > 0
+  const hasAngular = html.includes('ng-version') || $('[ng-version]').length > 0
+  const ngVersion = hasAngular ? ($('[ng-version]').attr('ng-version') ?? null) : null
 
-  // jQuery
-  if (html.includes('jquery') || html.includes('jQuery')) {
-    apps.push({ name: 'jQuery', category: 'JavaScript Library', version: null })
-  }
-
-  // Bootstrap
-  if (html.includes('bootstrap') || $('[class*="container-fluid"]').length > 0) {
-    apps.push({ name: 'Bootstrap', category: 'CSS Framework', version: null })
-  }
-  if (html.includes('tailwindcss') || html.includes('tailwind')) {
-    apps.push({ name: 'Tailwind CSS', category: 'CSS Framework', version: null })
-  }
-
-  return apps
+  return [
+    ...(hasReact ? [{ name: 'React', category: 'JavaScript Framework', version: null }] : []),
+    ...(hasVue ? [{ name: 'Vue.js', category: 'JavaScript Framework', version: null }] : []),
+    ...(hasAngular ? [{ name: 'Angular', category: 'JavaScript Framework', version: ngVersion }] : []),
+    ...(html.includes('jquery') || html.includes('jQuery')
+      ? [{ name: 'jQuery', category: 'JavaScript Library', version: null }]
+      : []),
+    ...(html.includes('bootstrap') || $('[class*="container-fluid"]').length > 0
+      ? [{ name: 'Bootstrap', category: 'CSS Framework', version: null }]
+      : []),
+    ...(html.includes('tailwindcss') || html.includes('tailwind')
+      ? [{ name: 'Tailwind CSS', category: 'CSS Framework', version: null }]
+      : []),
+  ]
 }
 
 function detectThirdPartyScripts(
@@ -192,31 +218,36 @@ function detectThirdPartyScripts(
   baseUrl: string,
 ): ThirdPartyScript[] {
   const base = new URL(baseUrl)
-  const scripts: ThirdPartyScript[] = []
-  const seenDomains = new Set<string>()
 
-  $('script[src]').each((_, el) => {
-    const src = $(el).attr('src')
-    if (!src) return
+  const srcs: string[] = $('script[src]')
+    .map((_, el) => $(el).attr('src') ?? '')
+    .get()
+    .filter((src) => src.length > 0)
 
-    try {
-      const resolved = new URL(src, base.href)
-      if (resolved.hostname !== base.hostname) {
+  const { scripts } = srcs.reduce<{
+    readonly scripts: readonly ThirdPartyScript[]
+    readonly seenDomains: ReadonlySet<string>
+  }>(
+    (acc, src) => {
+      try {
+        const resolved = new URL(src, base.href)
+        if (resolved.hostname === base.hostname) return acc
+
         const domain = resolved.hostname
-        if (!seenDomains.has(domain)) {
-          seenDomains.add(domain)
-          scripts.push({
-            domain,
-            purpose: guessScriptPurpose(domain),
-          })
-        }
-      }
-    } catch {
-      // Skip malformed URLs
-    }
-  })
+        if (acc.seenDomains.has(domain)) return acc
 
-  return scripts
+        return {
+          scripts: [...acc.scripts, { domain, purpose: guessScriptPurpose(domain) }],
+          seenDomains: new Set([...acc.seenDomains, domain]),
+        }
+      } catch {
+        return acc
+      }
+    },
+    { scripts: [], seenDomains: new Set() },
+  )
+
+  return [...scripts]
 }
 
 function guessScriptPurpose(domain: string): string | null {

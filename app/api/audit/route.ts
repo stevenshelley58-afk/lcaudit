@@ -5,11 +5,8 @@ import { getEnv } from '@/lib/env'
 import { validateAuditUrl } from '@/lib/url-safety'
 import { checkRateLimit, generateAuditId, extractHostname } from '@/lib/utils'
 import { ApiError, AuditError } from '@/lib/errors'
+import { AuditRequestSchema } from '@/lib/types'
 import type { ApiResponse } from '@/lib/types'
-
-const AuditRequestSchema = z.object({
-  url: z.string().min(1, 'URL is required'),
-})
 
 export async function POST(request: Request): Promise<Response> {
   try {
@@ -93,7 +90,6 @@ function handleError(error: unknown): Response {
   }
 
   // Unknown error — don't leak internals
-  console.error('Unexpected audit error:', error)
   return NextResponse.json(
     {
       success: false,

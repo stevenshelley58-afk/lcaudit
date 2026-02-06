@@ -3,7 +3,6 @@ import { fetchWithRetry } from '@/lib/utils'
 import { PAGESPEED_API_URL } from '@/lib/constants'
 import type { LighthouseData, LighthouseScores, LighthouseDiagnostic } from '@/lib/types'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 interface PageSpeedResponse {
   readonly lighthouseResult: {
     readonly categories: Record<string, { readonly score: number | null }>
@@ -13,7 +12,6 @@ interface PageSpeedResponse {
     >
   }
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export async function collectLighthouse(
   url: string,

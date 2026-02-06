@@ -72,15 +72,16 @@ export async function collectAll(
   )
 
   // Check required collectors (indices 0, 1, 2)
-  const failedRequired: string[] = []
-  for (let i = 0; i < REQUIRED_COLLECTORS.length; i++) {
-    const result = results[i]
-    if (result.status === 'rejected') {
-      failedRequired.push(
-        `${REQUIRED_COLLECTORS[i].name}: ${(result.reason as Error).message}`,
-      )
-    }
-  }
+  const failedRequired = REQUIRED_COLLECTORS.reduce<readonly string[]>(
+    (acc, collector, i) => {
+      const result = results[i]
+      if (result.status === 'rejected') {
+        return [...acc, `${collector.name}: ${(result.reason as Error).message}`]
+      }
+      return acc
+    },
+    [],
+  )
 
   if (failedRequired.length > 0) {
     throw new AuditError(

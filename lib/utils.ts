@@ -48,6 +48,17 @@ const limiter = new Map<string, readonly number[]>()
 
 export function checkRateLimit(ip: string): boolean {
   const now = Date.now()
+
+  // Prune stale IPs to prevent unbounded memory growth
+  for (const [key, timestamps] of limiter) {
+    const active = timestamps.filter((t) => now - t < RATE_LIMIT.windowMs)
+    if (active.length === 0) {
+      limiter.delete(key)
+    } else if (active.length !== timestamps.length) {
+      limiter.set(key, active)
+    }
+  }
+
   const existing = limiter.get(ip) ?? []
   const recent = existing.filter((t) => now - t < RATE_LIMIT.windowMs)
 

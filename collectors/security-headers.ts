@@ -1,3 +1,4 @@
+import { fetchWithRetry } from '@/lib/utils'
 import { SECURITY_HEADERS, USER_AGENT } from '@/lib/constants'
 import type { SecurityHeadersData } from '@/lib/types'
 
@@ -5,27 +6,40 @@ export async function collectSecurityHeaders(
   url: string,
   _auditId: string,
 ): Promise<SecurityHeadersData> {
-  const response = await fetch(url, {
-    method: 'HEAD',
-    redirect: 'follow',
-    headers: { 'User-Agent': USER_AGENT },
-  })
+  const response = await fetchWithRetry(
+    async () => {
+      const r = await fetch(url, {
+        method: 'HEAD',
+        redirect: 'follow',
+        headers: { 'User-Agent': USER_AGENT },
+      })
+      if (!r.ok) {
+        throw new Error(`Security headers fetch failed: ${r.status}`)
+      }
+      return r
+    },
+    2,
+    'security-headers-fetch',
+  )
 
-  const headers: Record<string, string | null> = {}
-  const missingHeaders: string[] = []
-
-  for (const header of SECURITY_HEADERS) {
-    const value = response.headers.get(header)
-    headers[header] = value
-    if (!value) {
-      missingHeaders.push(header)
-    }
-  }
+  const headerResults = SECURITY_HEADERS.reduce<{
+    readonly headers: Record<string, string | null>
+    readonly missingHeaders: readonly string[]
+  }>(
+    (acc, header) => {
+      const value = response.headers.get(header)
+      return {
+        headers: { ...acc.headers, [header]: value },
+        missingHeaders: value ? acc.missingHeaders : [...acc.missingHeaders, header],
+      }
+    },
+    { headers: {}, missingHeaders: [] },
+  )
 
   return {
-    headers,
-    missingHeaders,
-    grade: calculateGrade(missingHeaders.length),
+    headers: headerResults.headers,
+    missingHeaders: [...headerResults.missingHeaders],
+    grade: calculateGrade(headerResults.missingHeaders.length),
   }
 }
 

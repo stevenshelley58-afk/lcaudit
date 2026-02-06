@@ -99,45 +99,41 @@ function extractLinks(
   base: URL,
   type: 'internal' | 'external',
 ): string[] {
-  const links: string[] = []
+  const hrefs: string[] = $('a[href]')
+    .map((_, el) => $(el).attr('href') ?? '')
+    .get()
+    .filter((href) => href.length > 0)
 
-  $('a[href]').each((_, el) => {
-    const href = $(el).attr('href')
-    if (!href) return
-
+  const resolved = hrefs.reduce<readonly string[]>((acc, href) => {
     try {
-      const resolved = new URL(href, base.href)
-      if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') {
-        return
-      }
+      const url = new URL(href, base.href)
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return acc
 
-      const isInternal = resolved.hostname === base.hostname
+      const isInternal = url.hostname === base.hostname
       if ((type === 'internal' && isInternal) || (type === 'external' && !isInternal)) {
-        links.push(resolved.href)
+        return [...acc, url.href]
       }
+      return acc
     } catch {
-      // Skip malformed URLs
+      return acc
     }
-  })
+  }, [])
 
-  return [...new Set(links)]
+  return [...new Set(resolved)]
 }
 
 function extractSchemaOrg($: cheerio.CheerioAPI): unknown[] {
-  const schemas: unknown[] = []
-
-  $('script[type="application/ld+json"]').each((_, el) => {
-    try {
-      const content = $(el).html()
-      if (content) {
-        schemas.push(JSON.parse(content))
+  return $('script[type="application/ld+json"]')
+    .map((_, el) => $(el).html())
+    .get()
+    .filter((content): content is string => content !== null && content.length > 0)
+    .reduce<unknown[]>((acc, content) => {
+      try {
+        return [...acc, JSON.parse(content)]
+      } catch {
+        return acc
       }
-    } catch {
-      // Skip invalid JSON-LD
-    }
-  })
-
-  return schemas
+    }, [])
 }
 
 function countWords($: cheerio.CheerioAPI): number {
