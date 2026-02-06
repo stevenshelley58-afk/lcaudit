@@ -88,6 +88,7 @@ export async function POST(request: Request): Promise<Response> {
     // Wait for all 10 collectors to finish
     const collectedData = await collectors.waitForAll()
     const collectorsMs = Date.now() - startTime
+    console.log(`[pipeline] All collectors done in ${collectorsMs}ms`)
 
     // Wave 2: Run remaining 7 analysers with full data
     const wave2Start = Date.now()
@@ -97,6 +98,8 @@ export async function POST(request: Request): Promise<Response> {
     ])
     const wave2Ms = Date.now() - wave2Start
     const visualMs = Date.now() - visualStart
+    console.log(`[pipeline] Visual analyser done in ${visualMs}ms`)
+    console.log(`[pipeline] Wave 2 remaining analysers done in ${wave2Ms}ms`)
 
     // Combine: visual first (matches original ANALYSERS order), then remaining 7
     const analyses: readonly AnalysisResult[] = [visualResult, ...remainingBatch.results]
@@ -120,19 +123,6 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({
       success: true,
       data: report,
-      _timing: {
-        earlyDepsMs,
-        collectorsMs,
-        visualAnalyserMs: visualMs,
-        wave2RemainingMs: wave2Ms,
-        wave3SynthesisMs: wave3Ms,
-        totalMs,
-        collectors: collectors.timings,
-        analysers: [
-          { name: 'Visual & Design', durationMs: visualMs, status: 'ok' as const },
-          ...remainingBatch.timings,
-        ],
-      },
     })
   } catch (error) {
     return handleError(error)

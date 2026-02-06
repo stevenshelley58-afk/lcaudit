@@ -58,8 +58,8 @@ async function callGeminiAlpha(data: CollectedData): Promise<AnalysisResult> {
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-      mediaResolution: MediaResolution.MEDIA_RESOLUTION_HIGH,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      mediaResolution: MediaResolution.MEDIA_RESOLUTION_LOW,
     },
   })
 

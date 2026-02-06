@@ -1,7 +1,10 @@
 import { zodToJsonSchema } from 'zod-to-json-schema'
-import { getOpenAiClient, getAnthropicClient } from '@/lib/ai'
+import { getOpenAiClient, getGeminiClient } from '@/lib/ai'
+import { withTimeout } from '@/lib/utils'
 import { SynthesisResultSchema } from '@/lib/types'
 import type { AnalysisResult, SynthesisResult } from '@/lib/types'
+
+const SYNTHESIS_TIMEOUT_MS = 30_000
 
 function buildInput(
   hostname: string,
@@ -39,49 +42,51 @@ async function callGpt5(
   analyses: readonly AnalysisResult[],
 ): Promise<SynthesisResult> {
   const client = getOpenAiClient()
-  const response = await client.responses.create({
-    model: 'gpt-5',
-    instructions: SYSTEM_PROMPT,
-    input: [{ role: 'user', content: buildInput(hostname, analyses) }],
-    reasoning: { effort: 'medium' },
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'synthesis_result',
-        strict: true,
-        schema: zodToJsonSchema(SynthesisResultSchema) as Record<string, unknown>,
+  const response = await withTimeout(
+    client.responses.create({
+      model: 'gpt-5',
+      instructions: SYSTEM_PROMPT,
+      input: [{ role: 'user', content: buildInput(hostname, analyses) }],
+      reasoning: { effort: 'medium' },
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'synthesis_result',
+          strict: true,
+          schema: zodToJsonSchema(SynthesisResultSchema) as Record<string, unknown>,
+        },
       },
-    },
-    store: false,
-    max_output_tokens: 4096,
-  })
+      store: false,
+      max_output_tokens: 4096,
+    }),
+    SYNTHESIS_TIMEOUT_MS,
+    'synthesis-gpt5',
+  )
   return JSON.parse(response.output_text)
 }
 
-async function callClaudeFallback(
+async function callGeminiFallback(
   hostname: string,
   analyses: readonly AnalysisResult[],
 ): Promise<SynthesisResult> {
-  const client = getAnthropicClient()
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT + '\n\nReturn ONLY valid JSON matching this schema: { executiveSummary: string, overallScore: number (0-100), topFixes: Array<{ title: string, section: string, impact: string, description: string }> }',
-    messages: [{ role: 'user', content: buildInput(hostname, analyses) }],
-  })
-
-  const text = response.content
-    .filter((block) => block.type === 'text')
-    .map((block) => ('text' in block ? block.text : ''))
-    .join('')
-
-  // Extract JSON from response (Claude may wrap in markdown code blocks)
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
-    throw new Error('Claude response did not contain valid JSON')
-  }
-
-  return SynthesisResultSchema.parse(JSON.parse(jsonMatch[0]))
+  const client = getGeminiClient()
+  const response = await withTimeout(
+    client.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{
+        parts: [{ text: `${SYSTEM_PROMPT}\n\n${buildInput(hostname, analyses)}` }],
+      }],
+      config: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: zodToJsonSchema(SynthesisResultSchema) as Record<string, unknown>,
+      },
+    }),
+    SYNTHESIS_TIMEOUT_MS,
+    'synthesis-gemini-flash',
+  )
+  const text = response.text
+  if (!text) throw new Error('Gemini Flash returned empty response')
+  return SynthesisResultSchema.parse(JSON.parse(text))
 }
 
 export async function synthesize(
@@ -90,11 +95,8 @@ export async function synthesize(
 ): Promise<SynthesisResult> {
   try {
     return await callGpt5(hostname, analyses)
-  } catch {
-    try {
-      return await callGpt5(hostname, analyses)
-    } catch {
-      return await callClaudeFallback(hostname, analyses)
-    }
+  } catch (err) {
+    console.log(`[synthesis] GPT-5 failed: ${(err as Error).message} — falling back to Gemini Flash`)
+    return await callGeminiFallback(hostname, analyses)
   }
 }
