@@ -12,6 +12,7 @@ export const RATE_LIMIT = {
 export const SCREENSHOT_CONFIG = {
   desktop: { width: 1440, height: 900 },
   mobile: { width: 390, height: 844 },
+  fullPageMaxHeight: 10000,
 } as const
 
 export const PAGESPEED_API_URL =

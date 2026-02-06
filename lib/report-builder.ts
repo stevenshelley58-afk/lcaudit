@@ -8,6 +8,7 @@ import type {
   TopFix,
   RecommendedApp,
   AuditHistoryEntry,
+  PageLabel,
 } from '@/lib/types'
 
 const SECTION_ICONS: Record<string, string> = {
@@ -147,6 +148,7 @@ interface BuildReportParams {
   readonly auditId: string
   readonly url: string
   readonly hostname: string
+  readonly pageLabel: PageLabel
   readonly collectedData: CollectedData
   readonly analyses: readonly AnalysisResult[]
   readonly durationMs: number
@@ -156,6 +158,7 @@ export async function buildReport({
   auditId,
   url,
   hostname,
+  pageLabel,
   collectedData,
   analyses,
   durationMs,
@@ -188,6 +191,7 @@ export async function buildReport({
   const report: AuditReport = {
     url,
     hostname,
+    pageLabel,
     generatedAt: new Date().toISOString(),
     auditDurationMs: durationMs,
     overallScore,

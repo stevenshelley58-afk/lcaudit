@@ -34,7 +34,8 @@ async function captureScreenshot(
     viewport_width: String(viewport.width),
     viewport_height: String(viewport.height),
     format: 'png',
-    full_page: 'false',
+    full_page: 'true',
+    full_page_max_height: String(SCREENSHOT_CONFIG.fullPageMaxHeight),
     delay: '3',
     cache: 'false',
   })
