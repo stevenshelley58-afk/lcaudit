@@ -23,7 +23,7 @@ export async function collectSslDns(
   }
 }
 
-async function traceRedirects(url: string): Promise<readonly RedirectHop[]> {
+async function traceRedirects(url: string): Promise<RedirectHop[]> {
   let chain: readonly RedirectHop[] = []
   let currentUrl = url
 
