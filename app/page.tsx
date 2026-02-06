@@ -9,11 +9,13 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [report, setReport] = useState<AuditReportType | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<unknown>(null)
   const lastUrl = useRef<string>('')
 
   async function handleAudit(url: string) {
     setIsLoading(true)
     setError(null)
+    setErrorDetails(null)
     setReport(null)
     lastUrl.current = url
 
@@ -28,6 +30,7 @@ export default function HomePage() {
 
       if (!data.success) {
         setError(data.error ?? 'Audit failed')
+        if (data.details) setErrorDetails(data.details)
         return
       }
 
@@ -72,15 +75,29 @@ export default function HomePage() {
       )}
 
       {error && (
-        <div className="mt-8 p-4 bg-red-50 border border-red-200 rounded-[32px] text-danger max-w-xl w-full text-center animate-fade-in">
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={handleRetry}
-            className="mt-3 px-4 py-1.5 rounded-full bg-danger text-white text-sm font-medium hover:opacity-80 transition-opacity"
-          >
-            Try again
-          </button>
+        <div className="mt-8 p-4 bg-red-50 border border-red-200 rounded-[32px] text-danger max-w-xl w-full animate-fade-in">
+          <p className="text-center font-medium">{error}</p>
+          {errorDetails != null ? (
+            <details className="mt-3 text-left">
+              <summary className="text-xs text-medium cursor-pointer hover:text-dark">
+                Show details
+              </summary>
+              <pre className="mt-2 p-3 bg-white/80 rounded-xl text-xs text-dark font-mono overflow-x-auto whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+                {typeof errorDetails === 'string'
+                  ? errorDetails
+                  : JSON.stringify(errorDetails, null, 2)}
+              </pre>
+            </details>
+          ) : null}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="mt-3 px-4 py-1.5 rounded-full bg-danger text-white text-sm font-medium hover:opacity-80 transition-opacity"
+            >
+              Try again
+            </button>
+          </div>
         </div>
       )}
 

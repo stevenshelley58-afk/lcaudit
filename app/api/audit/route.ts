@@ -6,7 +6,7 @@ import { buildReport } from '@/lib/report-builder'
 import { getEnv } from '@/lib/env'
 import { validateAuditUrl } from '@/lib/url-safety'
 import { checkRateLimit, generateAuditId, extractHostname } from '@/lib/utils'
-import { ApiError, AuditError } from '@/lib/errors'
+import { ApiError, AuditError, AnalyserError, CollectorError, TimeoutError } from '@/lib/errors'
 import { AuditRequestSchema } from '@/lib/types'
 import type { ApiResponse } from '@/lib/types'
 
@@ -75,10 +75,52 @@ export async function POST(request: Request): Promise<Response> {
   }
 }
 
+const isDev = process.env.NODE_ENV !== 'production'
+
+function devDetails(error: unknown): unknown {
+  if (!isDev) return undefined
+
+  const base: Record<string, unknown> = {
+    stack: error instanceof Error ? error.stack : undefined,
+    name: error instanceof Error ? error.name : typeof error,
+  }
+
+  if (error instanceof AuditError) {
+    base.failedCollectors = error.failedCollectors
+  }
+
+  if (error instanceof AnalyserError) {
+    base.analyser = error.analyser
+    base.model = error.model
+  }
+
+  if (error instanceof CollectorError) {
+    base.collector = error.collector
+    base.tier = error.tier
+  }
+
+  if (error instanceof TimeoutError) {
+    base.label = error.label
+    base.timeoutMs = error.timeoutMs
+  }
+
+  if (error instanceof Error && error.cause) {
+    base.cause = error.cause instanceof Error
+      ? { message: error.cause.message, stack: error.cause.stack }
+      : error.cause
+  }
+
+  return base
+}
+
 function handleError(error: unknown): Response {
   if (error instanceof ApiError) {
     return NextResponse.json(
-      { success: false, error: error.message } satisfies ApiResponse<never>,
+      {
+        success: false,
+        error: error.message,
+        details: devDetails(error),
+      } satisfies ApiResponse<never>,
       { status: error.statusCode },
     )
   }
@@ -88,7 +130,7 @@ function handleError(error: unknown): Response {
       {
         success: false,
         error: 'Validation failed',
-        details: error.errors,
+        details: isDev ? { zodErrors: error.errors, stack: error.stack } : error.errors,
       } satisfies ApiResponse<never>,
       { status: 400 },
     )
@@ -96,16 +138,25 @@ function handleError(error: unknown): Response {
 
   if (error instanceof AuditError) {
     return NextResponse.json(
-      { success: false, error: error.message } satisfies ApiResponse<never>,
+      {
+        success: false,
+        error: error.message,
+        details: devDetails(error),
+      } satisfies ApiResponse<never>,
       { status: 502 },
     )
   }
 
-  // Unknown error — don't leak internals
+  // Unknown error — surface details in dev, hide in production
+  const message = error instanceof Error
+    ? error.message
+    : 'An unexpected error occurred. Please try again.'
+
   return NextResponse.json(
     {
       success: false,
-      error: 'An unexpected error occurred. Please try again.',
+      error: isDev ? message : 'An unexpected error occurred. Please try again.',
+      details: devDetails(error),
     } satisfies ApiResponse<never>,
     { status: 500 },
   )
