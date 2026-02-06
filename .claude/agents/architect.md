@@ -2,7 +2,7 @@
 name: architect
 description: System design specialist for lcaudit. Use for architectural decisions, scalability planning, and technical trade-offs.
 tools: ["Read", "Grep", "Glob"]
-model: opus
+model: sonnet
 skills: ["analysers", "collectors", "api-providers", "backend-patterns", "design-system"]
 ---
 

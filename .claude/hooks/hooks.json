@@ -1,0 +1,46 @@
+[
+  {
+    "matcher": "tool == \"Write\" && tool_input.file_path matches \"\\\\.(md|txt)$\" && !(tool_input.file_path matches \"README\\\\.md|CLAUDE\\\\.md|CONTRIBUTING\\\\.md|\\\\.claude/\")",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CLAUDE|CONTRIBUTING)\\.md$/.test(p)&&!p.includes('.claude/')){console.error('[Hook] BLOCKED: Unnecessary documentation file creation');console.error('[Hook] File: '+p);console.error('[Hook] Use README.md for project docs. Skills go in .claude/skills/');process.exit(1)}console.log(d)})\"",
+        "timeout": 5
+      }
+    ],
+    "description": "Block creation of random .md/.txt files outside README, CLAUDE.md, and .claude/"
+  },
+  {
+    "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node -e \"console.error('[Hook] Pushing to GitHub — Vercel will auto-deploy. Check preview URL after push.')\"",
+        "timeout": 5
+      }
+    ],
+    "description": "Remind about Vercel auto-deploy on git push"
+  },
+  {
+    "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm run dev|npm start|next dev|node server)\"",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node -e \"console.error('[Hook] BLOCKED: Do not run dev server locally. Push to GitHub and test on Vercel preview.');process.exit(1)\"",
+        "timeout": 5
+      }
+    ],
+    "description": "Block local dev server — ARM laptop, always use Vercel"
+  },
+  {
+    "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm run build|next build)\"",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node -e \"console.error('[Hook] BLOCKED: Do not build locally. Push to GitHub and let Vercel build.');process.exit(1)\"",
+        "timeout": 5
+      }
+    ],
+    "description": "Block local builds — always build on Vercel"
+  }
+]
