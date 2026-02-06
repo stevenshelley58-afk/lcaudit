@@ -81,7 +81,7 @@ function extractScores(data: PageSpeedResponse): LighthouseScores {
 
 function extractDiagnostics(
   data: PageSpeedResponse,
-): readonly LighthouseDiagnostic[] {
+): LighthouseDiagnostic[] {
   const { audits } = data.lighthouseResult
   const diagnosticKeys = [
     'render-blocking-resources',
