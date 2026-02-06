@@ -76,8 +76,8 @@ async function callOpenAiFallback(data: CollectedData): Promise<AnalysisResult> 
       {
         role: 'user',
         content: [
-          { type: 'input_image', image_url: data.screenshots.desktop },
-          { type: 'input_image', image_url: data.screenshots.mobile },
+          { type: 'input_image', image_url: data.screenshots.desktop, detail: 'high' },
+          { type: 'input_image', image_url: data.screenshots.mobile, detail: 'high' },
           { type: 'input_text', text: buildPrompt(data) },
         ],
       },
