@@ -147,7 +147,6 @@ export function AuditReport({ report }: AuditReportProps) {
 
       {/* Screenshots */}
       <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6">
-        <h2 className="text-base font-bold text-black mb-4">Screenshots</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-medium uppercase tracking-wide font-semibold mb-2">
