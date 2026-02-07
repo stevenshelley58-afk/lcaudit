@@ -40,14 +40,14 @@ export function TerminalLog({ logs, active }: TerminalLogProps) {
           <div className="text-gray-500 italic">Waking up the robots... they are not happy about it</div>
         )}
         {logs.map((log, i) => (
-          <div key={i} className="flex gap-4 font-mono items-center">
-            <span className="text-gray-600 shrink-0 text-[10px] w-16">
+          <div key={i} className="flex gap-4 font-mono items-start">
+            <span className="text-gray-600 shrink-0 text-[10px] w-16 pt-0.5">
               [{new Date(log.time).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })}]
             </span>
-            <span className={log.status === 200 ? 'text-green-500 shrink-0 w-8' : 'text-red-500 shrink-0 w-8'}>
+            <span className={log.status === 200 ? 'text-green-500 shrink-0 w-8 pt-0.5' : 'text-red-500 shrink-0 w-8 pt-0.5'}>
               {log.status}
             </span>
-            <span className="text-gray-300 truncate font-light tracking-tight">
+            <span className="text-gray-300 font-light tracking-tight line-clamp-2 break-all">
               {log.url}
             </span>
           </div>
