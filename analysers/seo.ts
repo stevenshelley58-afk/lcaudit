@@ -4,11 +4,13 @@ import { getOpenAiClient, getGeminiClient } from '@/lib/ai'
 import { AnalysisResultSchema } from '@/lib/types'
 import type { CollectedData, AnalysisResult } from '@/lib/types'
 
-function buildPrompt(data: CollectedData): string {
+function buildPrompt(data: CollectedData, hostname: string): string {
   const { html, robots, sitemap, serp } = data
   const missingAlt = html.images.filter((img) => !img.alt).length
 
   return `You are an SEO specialist. Analyse this website data and return findings.
+
+SITE: ${hostname}
 
 DATA:
 - Title: ${html.title ? `"${html.title}" (${html.title.length} chars)` : 'MISSING'}
@@ -30,21 +32,23 @@ ${serp?.homepageSnippet ? `- SERP snippet: "${serp.homepageSnippet}"` : ''}
 RULES:
 - sectionTitle must be "SEO & Keywords"
 - Every finding must cite real data from above as evidence
+- evidence must quote the actual value. Bad: "Title is too short". Good: "Title: '${html.title ?? ''}' (${html.title?.length ?? 0} chars) - below the 50-60 char ideal"
 - section must be "SEO & Keywords" for all findings
+- fix must reference the site's current content. Bad: "Add a meta description". Good: "Write a 120-160 char description of what ${hostname} offers"
 - Check: title length (50-60 ideal), meta desc (120-160), H1 count (exactly 1), heading hierarchy, canonical, structured data, alt text, sitemap, robots.txt, internal linking, viewport
 - Rating: Good (minor issues only), Needs Work (2+ medium issues), Critical (missing title OR no H1 OR not indexed)
 - Score: 0-100 based on severity of issues found
 - If multiple H1s exist, that is a finding (not "No H1 found")
 - Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
-- eli5Summary must NOT start with "The website" or "The site". Vary your opening - lead with what matters most (e.g. "Search engines can find this page, but...", "Missing a meta description means...", "Good foundations with a few gaps...").`
+- eli5Summary must NOT start with "The website" or "The site". Must reference actual SEO data from ${hostname}. Bad: "Good foundations with a few gaps". Good: "Google sees '${html.title ?? hostname}' as the page title, but with no meta description, search results show a random snippet instead of a compelling pitch".`
 }
 
-async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {
+async function callOpenAi(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getOpenAiClient()
   const response = await client.responses.create({
     model: 'gpt-4o-mini',
     instructions: 'You are an SEO specialist analysing a website. Return structured findings with evidence.',
-    input: [{ role: 'user', content: buildPrompt(data) }],
+    input: [{ role: 'user', content: buildPrompt(data, hostname) }],
     text: {
       format: {
         type: 'json_schema',
@@ -59,11 +63,11 @@ async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {
   return JSON.parse(response.output_text)
 }
 
-async function callGeminiFallback(data: CollectedData): Promise<AnalysisResult> {
+async function callGeminiFallback(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getGeminiClient()
   const response = await client.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: [{ parts: [{ text: buildPrompt(data) }] }],
+    contents: [{ parts: [{ text: buildPrompt(data, hostname) }] }],
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
@@ -75,14 +79,15 @@ async function callGeminiFallback(data: CollectedData): Promise<AnalysisResult> 
 
 export async function analyseSeo(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalysisResult> {
   try {
-    return await callOpenAi(data)
+    return await callOpenAi(data, hostname)
   } catch {
     try {
-      return await callOpenAi(data)
+      return await callOpenAi(data, hostname)
     } catch {
-      return await callGeminiFallback(data)
+      return await callGeminiFallback(data, hostname)
     }
   }
 }

@@ -50,7 +50,7 @@ function getHeaderFix(header: string): string {
   return fixes[header] ?? `Configure the ${header} header on the web server.`
 }
 
-function buildHeuristicResult(data: CollectedData): AnalysisResult {
+function buildHeuristicResult(data: CollectedData, hostname: string): AnalysisResult {
   const { sslDns, securityHeaders } = data
   const findings: Finding[] = []
 
@@ -124,11 +124,12 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
 
   const criticalCount = findings.filter((f) => f.impact === 'High').length
 
+  const missingCount = securityHeaders?.missingHeaders.length ?? 0
   return {
     sectionTitle: 'Security & Trust',
     eli5Summary: criticalCount >= 3
-      ? 'Several important security protections are missing, leaving visitors exposed.'
-      : 'Basic security is in place, but a few hardening steps would strengthen trust.',
+      ? `${hostname} is missing ${missingCount} security headers, leaving visitors exposed to common web attacks.`
+      : `${hostname} has basic security in place, but ${missingCount} missing header${missingCount !== 1 ? 's' : ''} could be strengthened.`,
     whyItMatters: 'Security headers protect visitors from attacks like clickjacking, XSS, and data interception.',
     overallRating: criticalCount >= 3 ? 'Critical' : criticalCount >= 1 ? 'Needs Work' : 'Good',
     score: criticalCount >= 3 ? 25 : criticalCount >= 1 ? 55 : 85,
@@ -138,10 +139,12 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
 
 // --- AI-enhanced analysis ---
 
-function buildPrompt(data: CollectedData): string {
+function buildPrompt(data: CollectedData, hostname: string): string {
   const { sslDns, securityHeaders } = data
 
   return `You are a web security analyst. Analyse this security data and return findings.
+
+SITE: ${hostname}
 
 DATA:
 - HTTPS: ${sslDns ? (sslDns.isHttps ? `Yes, cert issuer: ${sslDns.certIssuer ?? 'unknown'}, expires: ${sslDns.certExpiry ?? 'unknown'}` : 'No') : 'data unavailable'}
@@ -154,20 +157,22 @@ DATA:
 RULES:
 - sectionTitle must be "Security & Trust"
 - Every finding must cite real data as evidence
+- evidence must quote the exact header value or its absence. Bad: "Missing security header". Good: "Header 'strict-transport-security' not present in ${hostname}'s response"
 - evidenceType should be "HEADER" for header/SSL findings, "MISSING" for missing data
 - section must be "Security & Trust" for all findings
 - Check: HTTPS, cert expiry, redirect chain length, each missing header, CSP quality, HSTS configuration
 - Rating: Good (HTTPS + ≤ 1 missing critical header), Needs Work (HTTPS + 2+ missing), Critical (no HTTPS OR no HSTS+CSP)
 - Score: 0-100 based on security posture
-- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
+- eli5Summary must NOT start with "The website" or "The site". Must name ${hostname} and reference its specific security posture. Bad: "Basic security is in place". Good: "${hostname} uses HTTPS with a ${sslDns?.certIssuer ?? 'valid'} certificate, but ${securityHeaders?.missingHeaders.length ?? 'several'} missing security headers leave gaps".`
 }
 
-async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {
+async function callOpenAi(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getOpenAiClient()
   const response = await client.responses.create({
     model: 'gpt-4o-mini',
     instructions: 'You are a web security analyst. Return structured findings with evidence.',
-    input: [{ role: 'user', content: buildPrompt(data) }],
+    input: [{ role: 'user', content: buildPrompt(data, hostname) }],
     text: {
       format: {
         type: 'json_schema',
@@ -182,11 +187,11 @@ async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {
   return JSON.parse(response.output_text)
 }
 
-async function callGeminiFallback(data: CollectedData): Promise<AnalysisResult> {
+async function callGeminiFallback(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getGeminiClient()
   const response = await client.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: [{ parts: [{ text: buildPrompt(data) }] }],
+    contents: [{ parts: [{ text: buildPrompt(data, hostname) }] }],
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
@@ -198,14 +203,15 @@ async function callGeminiFallback(data: CollectedData): Promise<AnalysisResult> 
 
 export async function analyseSecurity(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalysisResult> {
   try {
-    return await callOpenAi(data)
+    return await callOpenAi(data, hostname)
   } catch {
     try {
-      return await callGeminiFallback(data)
+      return await callGeminiFallback(data, hostname)
     } catch {
-      return buildHeuristicResult(data)
+      return buildHeuristicResult(data, hostname)
     }
   }
 }

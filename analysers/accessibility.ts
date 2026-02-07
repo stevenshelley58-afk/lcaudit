@@ -4,19 +4,24 @@ import { getGeminiClient, getOpenAiClient } from '@/lib/ai'
 import { AnalysisResultSchema } from '@/lib/types'
 import type { CollectedData, AnalysisResult } from '@/lib/types'
 
-function buildPrompt(data: CollectedData): string {
+function buildPrompt(data: CollectedData, hostname: string): string {
   const { lighthouse, html } = data
   const a11yScore = lighthouse.mobile.accessibility
   const missingAlt = html.images.filter((img) => !img.alt).length
+  const totalImages = html.images.length
   const a11yDiagnostics = lighthouse.diagnostics
     .filter((d) => d.score !== null && d.score < 1)
     .slice(0, 15)
+  const pageTitle = html.title ?? 'unknown'
 
   return `You are a web accessibility specialist (WCAG 2.1 AA). Analyse this data and return findings.
 
+SITE: ${hostname}
+Page title: "${pageTitle}"
+
 DATA:
 - Lighthouse accessibility score: ${a11yScore}/100
-- Images: ${html.images.length} total, ${missingAlt} missing alt text
+- Images: ${totalImages} total, ${missingAlt} missing alt text
 - H1 count: ${html.headings.h1.length}, H2 count: ${html.headings.h2.length}, H3 count: ${html.headings.h3.length}
 - H1 text: ${html.headings.h1.map((h) => `"${h}"`).join(', ') || 'NONE'}
 - Page language: ${html.language ?? 'NOT SET'}
@@ -35,19 +40,20 @@ These are High-impact WCAG failures that Lighthouse sometimes underweights.
 RULES:
 - sectionTitle must be "Accessibility"
 - Every finding must cite real data as evidence
+- evidence must include exact counts. Bad: "many images lack alt text". Good: "${missingAlt} of ${totalImages} images missing alt text"
 - section must be "Accessibility" for all findings
 - Check: alt text, heading hierarchy, language attribute, form labels, colour contrast (from diagnostics), viewport
 - Rating: Good (score ≥ 90 AND no High-impact failures), Needs Work (score 50-89 OR High-impact failures), Critical (score < 50)
 - Score: 0-100, adjusted down from Lighthouse score if High-impact issues found
 - Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
-- eli5Summary must NOT start with "The website" or "The site". Vary your opening - lead with the most impactful issue (e.g. "Screen reader users will struggle with...", "Mostly accessible, but images lack descriptions...", "Several barriers exist for disabled visitors...").`
+- eli5Summary must NOT start with "The website" or "The site". Must name a specific barrier on ${hostname}. Bad: "Several barriers exist for disabled visitors". Good: "Screen reader users visiting ${hostname} will miss context on ${missingAlt} of ${totalImages} images that lack descriptions".`
 }
 
-async function callGemini(data: CollectedData): Promise<AnalysisResult> {
+async function callGemini(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getGeminiClient()
   const response = await client.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: [{ parts: [{ text: buildPrompt(data) }] }],
+    contents: [{ parts: [{ text: buildPrompt(data, hostname) }] }],
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
@@ -57,12 +63,12 @@ async function callGemini(data: CollectedData): Promise<AnalysisResult> {
   return JSON.parse(response.text ?? '{}')
 }
 
-async function callOpenAiFallback(data: CollectedData): Promise<AnalysisResult> {
+async function callOpenAiFallback(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getOpenAiClient()
   const response = await client.responses.create({
     model: 'gpt-4o-mini',
     instructions: 'You are a web accessibility specialist (WCAG 2.1 AA). Return structured findings.',
-    input: [{ role: 'user', content: buildPrompt(data) }],
+    input: [{ role: 'user', content: buildPrompt(data, hostname) }],
     text: {
       format: {
         type: 'json_schema',
@@ -79,14 +85,15 @@ async function callOpenAiFallback(data: CollectedData): Promise<AnalysisResult> 
 
 export async function analyseAccessibility(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalysisResult> {
   try {
-    return await callGemini(data)
+    return await callGemini(data, hostname)
   } catch {
     try {
-      return await callGemini(data)
+      return await callGemini(data, hostname)
     } catch {
-      return await callOpenAiFallback(data)
+      return await callOpenAiFallback(data, hostname)
     }
   }
 }

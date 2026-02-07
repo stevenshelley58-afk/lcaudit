@@ -2,13 +2,14 @@ import { zodToJsonSchema } from 'zod-to-json-schema'
 import { getOpenAiClient, getGeminiClient } from '@/lib/ai'
 import { withTimeout } from '@/lib/utils'
 import { SynthesisResultSchema } from '@/lib/types'
-import type { AnalysisResult, SynthesisResult } from '@/lib/types'
+import type { AnalysisResult, SynthesisResult, CollectedData } from '@/lib/types'
 
 const SYNTHESIS_TIMEOUT_MS = 30_000
 
 function buildInput(
   hostname: string,
   analyses: readonly AnalysisResult[],
+  collectedData: CollectedData,
 ): string {
   const sections = analyses.map((a) => ({
     section: a.sectionTitle,
@@ -17,11 +18,20 @@ function buildInput(
     findingCount: a.findings.length,
     highImpactFindings: a.findings
       .filter((f) => f.impact === 'High')
-      .map((f) => ({ title: f.title, evidence: f.evidence })),
+      .map((f) => ({ title: f.title, evidence: f.evidence, fix: f.fix })),
     eli5: a.eli5Summary,
   }))
 
-  return JSON.stringify({ hostname, sections })
+  const siteContext = {
+    hostname,
+    pageTitle: collectedData.html.title ?? null,
+    h1: collectedData.html.headings.h1[0] ?? null,
+    platform: collectedData.techStack?.platform ?? null,
+    wordCount: collectedData.html.wordCount,
+    mobilePerformance: collectedData.lighthouse.mobile.performance,
+  }
+
+  return JSON.stringify({ siteContext, sections })
 }
 
 const SYSTEM_PROMPT = `You are a web audit report writer. Write for a business owner with zero technical knowledge. English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
@@ -34,20 +44,22 @@ TASK:
 RULES:
 - Discard any finding without evidence
 - If a section has "Error" rating, mention it briefly ("We couldn't check X") but don't let it tank the score
-- topFixes descriptions must be actionable - not "improve SEO" but "add a meta description between 120-160 characters"
+- topFixes descriptions must be actionable and reference the site's actual data - not "improve SEO" but "rewrite the meta description from 'current value' to a 120-160 char pitch for what the business offers"
 - impact must be one of: "High", "Medium", "Low"
-- executiveSummary must NOT start with "The website" or "The site". Lead with a verdict or the most important takeaway.`
+- executiveSummary must NOT start with "The website" or "The site". Must reference the site by name or what it does. Bad: "Overall a decent site with some areas for improvement." Good: "[hostname] presents a professional [platform/type] but mobile speed (scoring X/100) is holding it back."
+- executiveSummary must mention at least one specific metric or finding from the data`
 
 async function callGpt5(
   hostname: string,
   analyses: readonly AnalysisResult[],
+  collectedData: CollectedData,
 ): Promise<SynthesisResult> {
   const client = getOpenAiClient()
   const response = await withTimeout(
     client.responses.create({
       model: 'gpt-5',
       instructions: SYSTEM_PROMPT,
-      input: [{ role: 'user', content: buildInput(hostname, analyses) }],
+      input: [{ role: 'user', content: buildInput(hostname, analyses, collectedData) }],
       reasoning: { effort: 'medium' },
       text: {
         format: {
@@ -69,13 +81,14 @@ async function callGpt5(
 async function callGeminiFallback(
   hostname: string,
   analyses: readonly AnalysisResult[],
+  collectedData: CollectedData,
 ): Promise<SynthesisResult> {
   const client = getGeminiClient()
   const response = await withTimeout(
     client.models.generateContent({
       model: 'gemini-2.0-flash',
       contents: [{
-        parts: [{ text: `${SYSTEM_PROMPT}\n\n${buildInput(hostname, analyses)}` }],
+        parts: [{ text: `${SYSTEM_PROMPT}\n\n${buildInput(hostname, analyses, collectedData)}` }],
       }],
       config: {
         responseMimeType: 'application/json',
@@ -93,11 +106,12 @@ async function callGeminiFallback(
 export async function synthesize(
   hostname: string,
   analyses: readonly AnalysisResult[],
+  collectedData: CollectedData,
 ): Promise<SynthesisResult> {
   try {
-    return await callGpt5(hostname, analyses)
+    return await callGpt5(hostname, analyses, collectedData)
   } catch (err) {
     console.log(`[synthesis] GPT-5 failed: ${(err as Error).message}. Falling back to Gemini Flash`)
-    return await callGeminiFallback(hostname, analyses)
+    return await callGeminiFallback(hostname, analyses, collectedData)
   }
 }

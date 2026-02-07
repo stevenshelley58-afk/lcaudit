@@ -80,7 +80,7 @@ export async function POST(request: Request): Promise<Response> {
 
     // Fire visual analyser immediately (runs concurrently with remaining collectors)
     const visualStart = Date.now()
-    const visualPromise: Promise<AnalysisResult> = analyseVisual(partialData).catch((err) => {
+    const visualPromise: Promise<AnalysisResult> = analyseVisual(partialData, hostname).catch((err) => {
       console.log(`[analyser] Visual & Design FAILED: ${(err as Error).message}`)
       return makeErrorResult('Visual & Design', err as Error)
     })
@@ -94,7 +94,7 @@ export async function POST(request: Request): Promise<Response> {
     const wave2Start = Date.now()
     const [visualResult, remainingBatch] = await Promise.all([
       visualPromise,
-      runRemainingAnalysers(collectedData),
+      runRemainingAnalysers(collectedData, hostname),
     ])
     const wave2Ms = Date.now() - wave2Start
     const visualMs = Date.now() - visualStart

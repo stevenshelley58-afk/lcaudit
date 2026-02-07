@@ -6,7 +6,7 @@ import type { CollectedData, AnalysisResult, Finding } from '@/lib/types'
 
 // --- Heuristic fallback ---
 
-function buildHeuristicResult(data: CollectedData): AnalysisResult {
+function buildHeuristicResult(data: CollectedData, hostname: string): AnalysisResult {
   const { ogTags, twitterCard, favicon } = data.html
   const findings: Finding[] = []
 
@@ -91,13 +91,15 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
 
   const missingCount = findings.filter((f) => f.evidenceType === 'MISSING').length
 
+  const ogTitle = data.html.ogTags.title
+  const hasImage = !!data.html.ogTags.image
   return {
     sectionTitle: 'Social & Sharing',
     eli5Summary: missingCount >= 3
-      ? "Shared links look bare on social media - no image, no description, just a plain URL."
+      ? `Sharing ${hostname} on social media shows a bare link - no image, no description, just a URL.`
       : missingCount >= 1
-        ? 'Social sharing is partially set up but missing some key elements for a polished preview.'
-        : 'Social sharing tags are well-configured and links will look great when shared.',
+        ? `Sharing ${hostname} shows '${ogTitle ?? 'no title'}' ${hasImage ? 'with an image' : 'without an image'}, but some tags are missing for a polished preview.`
+        : `Sharing ${hostname} on social media displays '${ogTitle ?? hostname}' with an image and description - well configured.`,
     whyItMatters: 'Social sharing is free marketing. A well-configured preview card can dramatically increase click-through rates.',
     overallRating: missingCount >= 3 ? 'Critical' : missingCount >= 1 ? 'Needs Work' : 'Good',
     score: missingCount >= 3 ? 25 : missingCount >= 1 ? 60 : 90,
@@ -107,10 +109,14 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
 
 // --- AI-enhanced analysis ---
 
-function buildPrompt(data: CollectedData): string {
+function buildPrompt(data: CollectedData, hostname: string): string {
   const { ogTags, twitterCard, favicon } = data.html
+  const pageTitle = data.html.title ?? 'unknown'
 
   return `You are a social media and sharing specialist. Analyse this website's social sharing setup.
+
+SITE: ${hostname}
+Page title: "${pageTitle}"
 
 DATA:
 - og:title: ${ogTags.title ? `"${ogTags.title}"` : 'MISSING'}
@@ -132,15 +138,16 @@ RULES:
 - Also check quality: is the og:description compelling? Is the og:title different from the page title? Is og:image a proper social image or just a logo?
 - Rating: Good (all essentials present), Needs Work (1-2 missing), Critical (3+ missing)
 - Score: 0-100 based on completeness and quality
-- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
+- eli5Summary must NOT start with "The website" or "The site". Must describe how ${hostname} will actually appear when shared. Bad: "Social sharing is partially set up". Good: "Sharing ${hostname} on Facebook shows '${ogTags.title ?? 'no title'}' ${ogTags.image ? 'with an image preview' : 'with a blank preview'} - ${ogTags.description ? 'the description looks good' : 'but no description appears'}".`
 }
 
-async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {
+async function callOpenAi(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getOpenAiClient()
   const response = await client.responses.create({
     model: 'gpt-4o-mini',
     instructions: 'You are a social media sharing specialist. Return structured findings.',
-    input: [{ role: 'user', content: buildPrompt(data) }],
+    input: [{ role: 'user', content: buildPrompt(data, hostname) }],
     text: {
       format: {
         type: 'json_schema',
@@ -155,11 +162,11 @@ async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {
   return JSON.parse(response.output_text)
 }
 
-async function callGeminiFallback(data: CollectedData): Promise<AnalysisResult> {
+async function callGeminiFallback(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getGeminiClient()
   const response = await client.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: [{ parts: [{ text: buildPrompt(data) }] }],
+    contents: [{ parts: [{ text: buildPrompt(data, hostname) }] }],
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
@@ -171,14 +178,15 @@ async function callGeminiFallback(data: CollectedData): Promise<AnalysisResult> 
 
 export async function analyseSocial(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalysisResult> {
   try {
-    return await callOpenAi(data)
+    return await callOpenAi(data, hostname)
   } catch {
     try {
-      return await callGeminiFallback(data)
+      return await callGeminiFallback(data, hostname)
     } catch {
-      return buildHeuristicResult(data)
+      return buildHeuristicResult(data, hostname)
     }
   }
 }

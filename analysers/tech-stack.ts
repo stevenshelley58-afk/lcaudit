@@ -6,13 +6,13 @@ import type { CollectedData, AnalysisResult, Finding } from '@/lib/types'
 
 // --- Heuristic fallback ---
 
-function buildHeuristicResult(data: CollectedData): AnalysisResult {
+function buildHeuristicResult(data: CollectedData, hostname: string): AnalysisResult {
   const { techStack } = data
 
   if (!techStack) {
     return {
       sectionTitle: 'Tech Stack & Apps',
-      eli5Summary: "Could not detect the technology running the site.",
+      eli5Summary: `Could not detect the technology running ${hostname}.`,
       whyItMatters: 'Understanding the tech stack helps identify missing tools and integration opportunities.',
       overallRating: 'Error',
       score: 0,
@@ -109,8 +109,8 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Tech Stack & Apps',
     eli5Summary: techStack.platform
-      ? `Built on ${techStack.platform} with ${techStack.detectedApps.length} technologies detected.`
-      : `${techStack.detectedApps.length} technologies detected powering this site.`,
+      ? `${hostname} runs on ${techStack.platform} with ${techStack.detectedApps.length} technologies detected${techStack.detectedApps.length > 0 ? ', including ' + techStack.detectedApps.slice(0, 3).map((a) => a.name).join(', ') : ''}.`
+      : `${techStack.detectedApps.length} technologies detected powering ${hostname}${techStack.detectedApps.length > 0 ? ', including ' + techStack.detectedApps.slice(0, 3).map((a) => a.name).join(', ') : ''}.`,
     whyItMatters: 'The right tech stack powers growth. Analytics, SEO tools, and performance monitoring drive improvement.',
     overallRating: highImpactCount >= 2 ? 'Critical' : highImpactCount >= 1 ? 'Needs Work' : 'Good',
     score: highImpactCount >= 2 ? 30 : highImpactCount >= 1 ? 60 : 85,
@@ -120,12 +120,14 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
 
 // --- AI-enhanced analysis ---
 
-function buildPrompt(data: CollectedData): string {
+function buildPrompt(data: CollectedData, hostname: string): string {
   const { techStack } = data
 
   if (!techStack) return ''
 
   return `You are a web technology analyst. Analyse this website's tech stack and return findings.
+
+SITE: ${hostname}
 
 DATA:
 - Platform: ${techStack.platform ?? 'not detected'}
@@ -138,18 +140,19 @@ RULES:
 - Every finding must cite real data as evidence
 - section must be "Tech Stack & Apps" for all findings
 - Check: platform currency, missing essential tools (analytics, SEO, security), third-party script bloat, outdated versions
-- Recommend missing essentials: analytics, form builder, SEO plugin, caching, CDN, security monitoring
+- Recommendations must be relevant to the detected platform. For Shopify recommend Shopify apps, for WordPress recommend WordPress plugins, etc.
 - Rating: Good (has essentials, lean stack), Needs Work (1-2 missing essentials), Critical (no analytics + other gaps)
 - Score: 0-100 based on stack completeness and health
-- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
+- eli5Summary must NOT start with "The website" or "The site". Must name the platform and specific apps. Bad: "A standard tech stack with some gaps". Good: "${hostname} runs on ${techStack.platform ?? 'an undetected platform'} with ${techStack.detectedApps.length} tools installed${techStack.detectedApps.length > 0 ? ' including ' + techStack.detectedApps[0].name : ''}".`
 }
 
-async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {
+async function callOpenAi(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getOpenAiClient()
   const response = await client.responses.create({
     model: 'gpt-4o-mini',
     instructions: 'You are a web technology analyst. Return structured findings.',
-    input: [{ role: 'user', content: buildPrompt(data) }],
+    input: [{ role: 'user', content: buildPrompt(data, hostname) }],
     text: {
       format: {
         type: 'json_schema',
@@ -164,11 +167,11 @@ async function callOpenAi(data: CollectedData): Promise<AnalysisResult> {
   return JSON.parse(response.output_text)
 }
 
-async function callGeminiFallback(data: CollectedData): Promise<AnalysisResult> {
+async function callGeminiFallback(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getGeminiClient()
   const response = await client.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: [{ parts: [{ text: buildPrompt(data) }] }],
+    contents: [{ parts: [{ text: buildPrompt(data, hostname) }] }],
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
@@ -180,18 +183,19 @@ async function callGeminiFallback(data: CollectedData): Promise<AnalysisResult> 
 
 export async function analyseTechStack(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalysisResult> {
   if (!data.techStack) {
-    return buildHeuristicResult(data)
+    return buildHeuristicResult(data, hostname)
   }
 
   try {
-    return await callOpenAi(data)
+    return await callOpenAi(data, hostname)
   } catch {
     try {
-      return await callGeminiFallback(data)
+      return await callGeminiFallback(data, hostname)
     } catch {
-      return buildHeuristicResult(data)
+      return buildHeuristicResult(data, hostname)
     }
   }
 }

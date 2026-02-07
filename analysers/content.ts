@@ -6,7 +6,7 @@ import type { CollectedData, AnalysisResult, Finding } from '@/lib/types'
 
 // --- Heuristic fallback ---
 
-function buildHeuristicResult(data: CollectedData): AnalysisResult {
+function buildHeuristicResult(data: CollectedData, hostname: string): AnalysisResult {
   const { html, linkCheck } = data
   const { wordCount, headings, forms, links } = html
   const totalHeadings = headings.h1.length + headings.h2.length + headings.h3.length
@@ -95,10 +95,10 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
   return {
     sectionTitle: 'Content & Conversion',
     eli5Summary: highImpactCount >= 2
-      ? "Significant content gaps exist - pages are too thin, poorly structured, or missing clear calls to action."
+      ? `${hostname} has ${wordCount} words and ${forms} form${forms !== 1 ? 's' : ''} - content is thin and visitors have ${forms === 0 ? 'no clear way to take action' : 'limited ways to engage'}.`
       : highImpactCount >= 1
-        ? 'Most of the content is solid, but a few gaps are worth addressing.'
-        : 'Well-structured content with good length and clear conversion points.',
+        ? `${hostname} has ${wordCount} words across ${headings.h2.length} sections, but ${forms === 0 ? 'no form or call-to-action' : 'a few gaps'} could be improved.`
+        : `${hostname} has ${wordCount} words of well-structured content with ${forms} form${forms !== 1 ? 's' : ''} for visitor engagement.`,
     whyItMatters: 'Content is what convinces visitors to become customers.',
     overallRating: highImpactCount >= 2 ? 'Critical' : highImpactCount >= 1 ? 'Needs Work' : 'Good',
     score: highImpactCount >= 2 ? 30 : highImpactCount >= 1 ? 55 : 85,
@@ -108,11 +108,15 @@ function buildHeuristicResult(data: CollectedData): AnalysisResult {
 
 // --- AI-enhanced analysis ---
 
-function buildPrompt(data: CollectedData): string {
+function buildPrompt(data: CollectedData, hostname: string): string {
   const { html, linkCheck } = data
   const { wordCount, headings, forms, links } = html
+  const pageTitle = html.title ?? 'unknown'
 
   return `You are a content strategy and conversion rate optimisation specialist. Analyse this website data.
+
+SITE: ${hostname}
+Page title: "${pageTitle}"
 
 DATA:
 - Word count: ${wordCount}
@@ -131,17 +135,18 @@ RULES:
 - Every finding must cite real data as evidence
 - section must be "Content & Conversion" for all findings
 - Analyse: content depth (thin < 300 words), heading structure, conversion opportunities (forms, CTAs), internal linking quality, broken links, content readability
-- Judge the heading TEXT quality - do H2s tell a story? Are they keyword-rich? Are they just "About Us" boilerplate?
+- When judging H2 quality, quote the actual headings. Bad: "Headings are generic". Good: "H2s like 'About Us' and 'Contact' are navigational, not persuasive or keyword-rich"
 - Rating: Good (substantial content, clear CTAs), Needs Work (gaps in content or conversion), Critical (thin content + no forms)
 - Score: 0-100
-- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.`
+- Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
+- eli5Summary must NOT start with "The website" or "The site". Must reference actual content from ${hostname}. Bad: "Content gaps exist". Good: "With ${wordCount} words and ${headings.h2.length} sections, ${hostname} has ${wordCount < 300 ? 'thin content that needs expanding' : 'adequate content'}${forms === 0 ? ', but no form or call-to-action gives visitors a way to take the next step' : ''}".`
 }
 
-async function callGemini(data: CollectedData): Promise<AnalysisResult> {
+async function callGemini(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getGeminiClient()
   const response = await client.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: [{ parts: [{ text: buildPrompt(data) }] }],
+    contents: [{ parts: [{ text: buildPrompt(data, hostname) }] }],
     config: {
       responseMimeType: 'application/json',
       responseJsonSchema: zodToJsonSchema(AnalysisResultSchema) as Record<string, unknown>,
@@ -151,12 +156,12 @@ async function callGemini(data: CollectedData): Promise<AnalysisResult> {
   return JSON.parse(response.text ?? '{}')
 }
 
-async function callOpenAiFallback(data: CollectedData): Promise<AnalysisResult> {
+async function callOpenAiFallback(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getOpenAiClient()
   const response = await client.responses.create({
     model: 'gpt-4o-mini',
     instructions: 'You are a content strategy and CRO specialist. Return structured findings.',
-    input: [{ role: 'user', content: buildPrompt(data) }],
+    input: [{ role: 'user', content: buildPrompt(data, hostname) }],
     text: {
       format: {
         type: 'json_schema',
@@ -173,14 +178,15 @@ async function callOpenAiFallback(data: CollectedData): Promise<AnalysisResult> 
 
 export async function analyseContent(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalysisResult> {
   try {
-    return await callGemini(data)
+    return await callGemini(data, hostname)
   } catch {
     try {
-      return await callOpenAiFallback(data)
+      return await callOpenAiFallback(data, hostname)
     } catch {
-      return buildHeuristicResult(data)
+      return buildHeuristicResult(data, hostname)
     }
   }
 }

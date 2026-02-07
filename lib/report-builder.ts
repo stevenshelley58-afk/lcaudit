@@ -175,7 +175,7 @@ export async function buildReport({
   let topFixes: readonly TopFix[]
 
   try {
-    const synthesis = await synthesize(hostname, analyses)
+    const synthesis = await synthesize(hostname, analyses, collectedData)
     executiveSummary = synthesis.executiveSummary
     overallScore = synthesis.overallScore
     topFixes = synthesis.topFixes

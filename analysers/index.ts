@@ -14,7 +14,7 @@ export { analyseVisual } from './visual'
 
 interface AnalyserDef {
   readonly name: string
-  readonly fn: (data: CollectedData) => Promise<AnalysisResult>
+  readonly fn: (data: CollectedData, hostname: string) => Promise<AnalysisResult>
 }
 
 const ALL_ANALYSERS: readonly AnalyserDef[] = [
@@ -47,7 +47,7 @@ export interface AnalyserBatchResult {
 export function makeErrorResult(name: string, error: Error): AnalysisResult {
   return {
     sectionTitle: name,
-    eli5Summary: `Analysis unavailable — ${error.message}`,
+    eli5Summary: `Analysis unavailable. ${error.message}`,
     whyItMatters: 'This section could not be analysed due to an error.',
     overallRating: 'Error',
     score: 0,
@@ -58,6 +58,7 @@ export function makeErrorResult(name: string, error: Error): AnalysisResult {
 async function runAnalyserBatch(
   analysers: readonly AnalyserDef[],
   data: CollectedData,
+  hostname: string,
   label: string,
 ): Promise<AnalyserBatchResult> {
   const waveStart = Date.now()
@@ -67,7 +68,7 @@ async function runAnalyserBatch(
     analysers.map(async (a) => {
       const t0 = Date.now()
       try {
-        const result = await withTimeout(a.fn(data), AI_TIMEOUT_MS, a.name)
+        const result = await withTimeout(a.fn(data, hostname), AI_TIMEOUT_MS, a.name)
         const ms = Date.now() - t0
         timings.push({ name: a.name, durationMs: ms, status: 'ok' })
         console.log(`[analyser] ${a.name} OK in ${ms}ms`)
@@ -99,13 +100,15 @@ async function runAnalyserBatch(
 /** Run all 8 analysers in parallel (original behaviour) */
 export async function runAllAnalysers(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalyserBatchResult> {
-  return runAnalyserBatch(ALL_ANALYSERS, data, 'Wave 2 (all analysers)')
+  return runAnalyserBatch(ALL_ANALYSERS, data, hostname, 'Wave 2 (all analysers)')
 }
 
 /** Run the 7 non-visual analysers in parallel */
 export async function runRemainingAnalysers(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalyserBatchResult> {
-  return runAnalyserBatch(REMAINING_ANALYSERS, data, 'Wave 2b (remaining analysers)')
+  return runAnalyserBatch(REMAINING_ANALYSERS, data, hostname, 'Wave 2b (remaining analysers)')
 }

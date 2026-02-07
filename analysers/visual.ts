@@ -4,13 +4,19 @@ import { getGeminiAlphaClient, getOpenAiClient, fetchImageAsBase64 } from '@/lib
 import { AnalysisResultSchema } from '@/lib/types'
 import type { CollectedData, AnalysisResult } from '@/lib/types'
 
-function buildPrompt(data: CollectedData): string {
+function buildPrompt(data: CollectedData, hostname: string): string {
   const { html } = data
   const imgCount = html.images.length
   const h1Count = html.headings.h1.length
   const h2Count = html.headings.h2.length
+  const pageTitle = html.title ?? 'unknown'
+  const h1Text = html.headings.h1[0] ?? 'none'
 
   return `You are a visual design and UX analyst. Analyse the two screenshots (desktop and mobile) of this website.
+
+SITE: ${hostname}
+Page title: "${pageTitle}"
+H1: "${h1Text}"
 
 CONTEXT:
 - Page has ${imgCount} images, ${h1Count} H1 headings, ${h2Count} H2 headings
@@ -29,17 +35,19 @@ ANALYSE FOR:
 RULES:
 - sectionTitle must be "Visual & Design"
 - Every finding must reference something specific you can see in the screenshots
+- evidence field must quote what you see verbatim. Bad: "some text has low contrast". Good: "White text 'Get Started' on pale blue background in hero section"
 - evidenceType must be "SCREENSHOT" for visual findings
 - evidenceDetail must describe where in the screenshot you see the issue (e.g. "mobile - hero section", "desktop - navigation bar")
 - section must be "Visual & Design" for all findings
+- fix must reference the specific element. Bad: "improve contrast". Good: "Add a dark overlay behind the '${h1Text}' hero text"
 - Rating: Good (polished, professional), Needs Work (functional but rough), Critical (major usability issues)
 - Score: 0-100 based on overall visual quality
 - Be specific - don't say "some issues", say exactly what you see
 - Use English spelling (analyse, colour, organisation). No slang, no colloquialisms, no em dashes.
-- eli5Summary must NOT start with "The website" or "The site". Vary your opening - lead with what stands out (e.g. "Clean layout but...", "Readability suffers from...", "A strong first impression, though...").`
+- eli5Summary must NOT start with "The website" or "The site". Must reference something only true of ${hostname} (e.g. a colour, a layout element, or a specific piece of text you can see). Bad: "Clean layout with room for improvement". Good: "Bold dark hero with the '${h1Text}' headline grabs attention, but the pale grey body text is hard to read on mobile".`
 }
 
-async function callGeminiAlpha(data: CollectedData): Promise<AnalysisResult> {
+async function callGeminiAlpha(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getGeminiAlphaClient()
 
   const [desktop, mobile] = await Promise.all([
@@ -53,7 +61,7 @@ async function callGeminiAlpha(data: CollectedData): Promise<AnalysisResult> {
       parts: [
         { inlineData: { mimeType: desktop.mimeType, data: desktop.base64 } },
         { inlineData: { mimeType: mobile.mimeType, data: mobile.base64 } },
-        { text: buildPrompt(data) },
+        { text: buildPrompt(data, hostname) },
       ],
     }],
     config: {
@@ -67,7 +75,7 @@ async function callGeminiAlpha(data: CollectedData): Promise<AnalysisResult> {
   return JSON.parse(response.text ?? '{}')
 }
 
-async function callOpenAiFallback(data: CollectedData): Promise<AnalysisResult> {
+async function callOpenAiFallback(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getOpenAiClient()
 
   const response = await client.responses.create({
@@ -79,7 +87,7 @@ async function callOpenAiFallback(data: CollectedData): Promise<AnalysisResult> 
         content: [
           { type: 'input_image', image_url: data.screenshots.desktop, detail: 'high' },
           { type: 'input_image', image_url: data.screenshots.mobile, detail: 'high' },
-          { type: 'input_text', text: buildPrompt(data) },
+          { type: 'input_text', text: buildPrompt(data, hostname) },
         ],
       },
     ],
@@ -99,14 +107,15 @@ async function callOpenAiFallback(data: CollectedData): Promise<AnalysisResult> 
 
 export async function analyseVisual(
   data: CollectedData,
+  hostname: string,
 ): Promise<AnalysisResult> {
   try {
-    return await callGeminiAlpha(data)
+    return await callGeminiAlpha(data, hostname)
   } catch {
     try {
-      return await callGeminiAlpha(data)
+      return await callGeminiAlpha(data, hostname)
     } catch {
-      return await callOpenAiFallback(data)
+      return await callOpenAiFallback(data, hostname)
     }
   }
 }
