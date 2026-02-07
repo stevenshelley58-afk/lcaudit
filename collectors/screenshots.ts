@@ -2,25 +2,31 @@ import { getScreenshotOneKey } from '@/lib/env'
 import { storeScreenshot } from '@/lib/storage'
 import { fetchWithRetry } from '@/lib/utils'
 import { SCREENSHOTONE_API_URL, SCREENSHOT_CONFIG } from '@/lib/constants'
-import type { ScreenshotData } from '@/lib/types'
+import type { ScreenshotBuffers } from '@/lib/types'
 
 export async function collectScreenshots(
   url: string,
   auditId: string,
-): Promise<ScreenshotData> {
+): Promise<ScreenshotBuffers> {
   const apiKey = getScreenshotOneKey()
 
-  const [desktopBuffer, mobileBuffer] = await Promise.all([
+  const [desktopArrayBuffer, mobileArrayBuffer] = await Promise.all([
     captureScreenshot(url, apiKey, SCREENSHOT_CONFIG.desktop),
     captureScreenshot(url, apiKey, SCREENSHOT_CONFIG.mobile),
   ])
 
-  const [desktopBlobUrl, mobileBlobUrl] = await Promise.all([
-    storeScreenshot(auditId, 'desktop', desktopBuffer),
-    storeScreenshot(auditId, 'mobile', mobileBuffer),
-  ])
+  const desktopBuffer = Buffer.from(desktopArrayBuffer)
+  const mobileBuffer = Buffer.from(mobileArrayBuffer)
 
-  return { desktop: desktopBlobUrl, mobile: mobileBlobUrl }
+  // Fire blob uploads in background — don't block the pipeline
+  const desktopBlobUrl = storeScreenshot(auditId, 'desktop', desktopArrayBuffer)
+  const mobileBlobUrl = storeScreenshot(auditId, 'mobile', mobileArrayBuffer)
+
+  // Prevent unhandled rejection if uploads fail before anyone awaits
+  desktopBlobUrl.catch(() => {})
+  mobileBlobUrl.catch(() => {})
+
+  return { desktopBuffer, mobileBuffer, desktopBlobUrl, mobileBlobUrl }
 }
 
 async function captureScreenshot(

@@ -104,6 +104,20 @@ export async function POST(request: Request): Promise<Response> {
     // Combine: visual first (matches original ANALYSERS order), then remaining 7
     const analyses: readonly AnalysisResult[] = [visualResult, ...remainingBatch.results]
 
+    // Resolve blob URLs (background uploads started during screenshot collection)
+    let screenshotUrls = { desktop: '', mobile: '' }
+    try {
+      const [desktopBlobUrl, mobileBlobUrl] = await Promise.all([
+        collectedData.screenshots.desktopBlobUrl,
+        collectedData.screenshots.mobileBlobUrl,
+      ])
+      screenshotUrls = { desktop: desktopBlobUrl, mobile: mobileBlobUrl }
+      const resolvedBlobMs = Date.now() - startTime
+      console.log(`[pipeline] Screenshot blob URLs resolved at ${resolvedBlobMs}ms`)
+    } catch (err) {
+      console.log(`[pipeline] Screenshot blob upload failed, report will lack screenshot URLs: ${(err as Error).message}`)
+    }
+
     // Wave 3: Build final report (synthesis + persistence)
     const t3 = Date.now()
     const durationMs = Date.now() - startTime
@@ -112,6 +126,7 @@ export async function POST(request: Request): Promise<Response> {
       url,
       hostname,
       collectedData,
+      screenshotUrls,
       analyses,
       durationMs,
     })

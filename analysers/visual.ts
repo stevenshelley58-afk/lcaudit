@@ -1,6 +1,6 @@
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import { ThinkingLevel, MediaResolution } from '@google/genai'
-import { getGeminiAlphaClient, getOpenAiClient, fetchImageAsBase64 } from '@/lib/ai'
+import { getGeminiAlphaClient, getOpenAiClient } from '@/lib/ai'
 import { AnalysisResultSchema } from '@/lib/types'
 import type { CollectedData, AnalysisResult } from '@/lib/types'
 
@@ -50,17 +50,15 @@ RULES:
 async function callGeminiAlpha(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getGeminiAlphaClient()
 
-  const [desktop, mobile] = await Promise.all([
-    fetchImageAsBase64(data.screenshots.desktop),
-    fetchImageAsBase64(data.screenshots.mobile),
-  ])
+  const desktopBase64 = data.screenshots.desktopBuffer.toString('base64')
+  const mobileBase64 = data.screenshots.mobileBuffer.toString('base64')
 
   const response = await client.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: [{
       parts: [
-        { inlineData: { mimeType: desktop.mimeType, data: desktop.base64 } },
-        { inlineData: { mimeType: mobile.mimeType, data: mobile.base64 } },
+        { inlineData: { mimeType: 'image/png', data: desktopBase64 } },
+        { inlineData: { mimeType: 'image/png', data: mobileBase64 } },
         { text: buildPrompt(data, hostname) },
       ],
     }],
@@ -78,6 +76,9 @@ async function callGeminiAlpha(data: CollectedData, hostname: string): Promise<A
 async function callOpenAiFallback(data: CollectedData, hostname: string): Promise<AnalysisResult> {
   const client = getOpenAiClient()
 
+  const desktopDataUri = `data:image/png;base64,${data.screenshots.desktopBuffer.toString('base64')}`
+  const mobileDataUri = `data:image/png;base64,${data.screenshots.mobileBuffer.toString('base64')}`
+
   const response = await client.responses.create({
     model: 'gpt-4o',
     instructions: 'You are a visual design and UX analyst. Analyse the screenshots and return structured findings.',
@@ -85,8 +86,8 @@ async function callOpenAiFallback(data: CollectedData, hostname: string): Promis
       {
         role: 'user',
         content: [
-          { type: 'input_image', image_url: data.screenshots.desktop, detail: 'high' },
-          { type: 'input_image', image_url: data.screenshots.mobile, detail: 'high' },
+          { type: 'input_image', image_url: desktopDataUri, detail: 'high' },
+          { type: 'input_image', image_url: mobileDataUri, detail: 'high' },
           { type: 'input_text', text: buildPrompt(data, hostname) },
         ],
       },

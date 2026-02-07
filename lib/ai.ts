@@ -41,18 +41,3 @@ export function getAnthropicClient(): Anthropic {
   return _anthropic
 }
 
-export async function fetchImageAsBase64(
-  url: string,
-): Promise<{ base64: string; mimeType: string }> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image: ${response.status} ${url}`)
-  }
-
-  const contentType = response.headers.get('content-type') ?? 'image/png'
-  const mimeType = contentType.split(';')[0].trim()
-  const buffer = await response.arrayBuffer()
-  const base64 = Buffer.from(buffer).toString('base64')
-
-  return { base64, mimeType }
-}

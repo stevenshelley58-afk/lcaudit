@@ -21,6 +21,17 @@ export const ScreenshotDataSchema = z.object({
 
 export type ScreenshotData = z.infer<typeof ScreenshotDataSchema>
 
+/**
+ * Runtime screenshot data — buffers for immediate AI use,
+ * plus background blob upload promises that resolve to public URLs.
+ */
+export interface ScreenshotBuffers {
+  readonly desktopBuffer: Buffer
+  readonly mobileBuffer: Buffer
+  readonly desktopBlobUrl: Promise<string>
+  readonly mobileBlobUrl: Promise<string>
+}
+
 export const LighthouseScoresSchema = z.object({
   performance: z.number(),
   accessibility: z.number(),
@@ -211,6 +222,7 @@ export type TechStackData = z.infer<typeof TechStackDataSchema>
 // Collected Data (all 10 collectors combined)
 // ============================================================
 
+/** Zod schema for serialised/stored collected data (uses URL strings for screenshots, not buffers) */
 export const CollectedDataSchema = z.object({
   screenshots: ScreenshotDataSchema,
   lighthouse: LighthouseDataSchema,
@@ -224,7 +236,19 @@ export const CollectedDataSchema = z.object({
   techStack: TechStackDataSchema.nullable(),
 })
 
-export type CollectedData = z.infer<typeof CollectedDataSchema>
+/** Runtime collected data — screenshots carry buffers + deferred blob URLs */
+export interface CollectedData {
+  readonly screenshots: ScreenshotBuffers
+  readonly lighthouse: LighthouseData
+  readonly html: HtmlData
+  readonly robots: RobotsData | null
+  readonly sitemap: SitemapData | null
+  readonly sslDns: SslDnsData | null
+  readonly securityHeaders: SecurityHeadersData | null
+  readonly serp: SerpData | null
+  readonly linkCheck: LinkCheckData | null
+  readonly techStack: TechStackData | null
+}
 
 // ============================================================
 // Analysis Output Types

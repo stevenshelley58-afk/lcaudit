@@ -3,7 +3,7 @@ import { AuditError } from '@/lib/errors'
 import { COLLECTOR_TIMEOUT_MS } from '@/lib/constants'
 import type {
   CollectedData,
-  ScreenshotData,
+  ScreenshotBuffers,
   LighthouseData,
   HtmlData,
   RobotsData,
@@ -32,7 +32,7 @@ interface CollectorDef<T> {
 }
 
 const REQUIRED_COLLECTORS: readonly [
-  CollectorDef<ScreenshotData>,
+  CollectorDef<ScreenshotBuffers>,
   CollectorDef<LighthouseData>,
   CollectorDef<HtmlData>,
 ] = [
@@ -66,8 +66,8 @@ export interface CollectorTiming {
 }
 
 export interface StartedCollectors {
-  /** Resolves when screenshots collector completes */
-  readonly screenshots: Promise<ScreenshotData>
+  /** Resolves when screenshots collector completes (buffers ready, blob uploads in background) */
+  readonly screenshots: Promise<ScreenshotBuffers>
   /** Resolves when html-extract collector completes */
   readonly html: Promise<HtmlData>
   /** Resolves to the full CollectedData once all 10 collectors finish */
@@ -116,7 +116,7 @@ export function startCollectors(url: string, auditId: string): StartedCollectors
     allCollectors.map((c, i) => [c.name, promises[i]]),
   )
 
-  const screenshotsPromise = promiseByName.get('screenshots')!.then((v) => v as ScreenshotData)
+  const screenshotsPromise = promiseByName.get('screenshots')!.then((v) => v as ScreenshotBuffers)
   const htmlPromise = promiseByName.get('html')!.then((v) => v as HtmlData)
 
   const waitForAll = async (): Promise<CollectedData> => {
@@ -151,7 +151,7 @@ export function startCollectors(url: string, auditId: string): StartedCollectors
     }
 
     return {
-      screenshots: (results[0] as PromiseFulfilledResult<ScreenshotData>).value,
+      screenshots: (results[0] as PromiseFulfilledResult<ScreenshotBuffers>).value,
       lighthouse: (results[1] as PromiseFulfilledResult<LighthouseData>).value,
       html: (results[2] as PromiseFulfilledResult<HtmlData>).value,
       robots: getOptionalValue<RobotsData>(0),

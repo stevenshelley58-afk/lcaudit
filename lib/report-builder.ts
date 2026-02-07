@@ -143,11 +143,17 @@ function extractMissingApps(
   return apps
 }
 
+export interface ScreenshotUrls {
+  readonly desktop: string
+  readonly mobile: string
+}
+
 interface BuildReportParams {
   readonly auditId: string
   readonly url: string
   readonly hostname: string
   readonly collectedData: CollectedData
+  readonly screenshotUrls: ScreenshotUrls
   readonly analyses: readonly AnalysisResult[]
   readonly durationMs: number
 }
@@ -157,6 +163,7 @@ export async function buildReport({
   url,
   hostname,
   collectedData,
+  screenshotUrls,
   analyses,
   durationMs,
 }: BuildReportParams): Promise<AuditReport> {
@@ -200,8 +207,8 @@ export async function buildReport({
       : [],
     missingApps: [...missingApps],
     screenshots: {
-      desktop: collectedData.screenshots.desktop,
-      mobile: collectedData.screenshots.mobile,
+      desktop: screenshotUrls.desktop,
+      mobile: screenshotUrls.mobile,
     },
     socialPreview: {
       ogImage: collectedData.html.ogTags.image,
